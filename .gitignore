@@ -1,0 +1,19 @@
+# General
+.DS_Store
+.env
+.idea/
+.vscode/
+
+# Node
+frontend/node_modules
+frontend/dist
+
+# Java
+calistrack-backend/target
+calistrack-backend/.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+*.log
+
+# OS
+Thumbs.db

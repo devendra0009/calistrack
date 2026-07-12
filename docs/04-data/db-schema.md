@@ -1,0 +1,245 @@
+# DB Schema (PostgreSQL)
+
+Naming: snake_case tables. Timestamps: `timestamptz`. Money/XP optional fields nullable for V1.
+
+Canonical CREATE + seed: [`seed.sql`](seed.sql).
+
+---
+
+## app_user
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK, default gen_random_uuid() | |
+| display_name | varchar(100) | NOT NULL | |
+| height_cm | numeric(5,2) | NULL | |
+| weight_kg | numeric(5,2) | NULL | |
+| age | int | NULL, CHECK > 0 | |
+| gender | varchar(20) | NULL, CHECK IN (…) | see enums |
+| experience | varchar(20) | NULL, CHECK IN (…) | |
+| current_goal_node_id | uuid | FK → node(id), NULL | set after onboarding |
+| role | varchar(20) | NOT NULL, DEFAULT `USER`, CHECK IN (`USER`,`ADMIN`) | |
+| avatar_url | text | NULL | Cloudinary later |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+---
+
+## user_auth_identity
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| user_id | uuid | FK → app_user(id) ON DELETE CASCADE, NOT NULL | |
+| provider | varchar(20) | NOT NULL, CHECK (`LOCAL`, …) | V1: LOCAL only |
+| email | varchar(255) | NOT NULL | |
+| password_hash | text | NULL | required when provider=LOCAL |
+| provider_subject | varchar(255) | NULL | for OAuth later |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+**Unique:** `(provider, email)`  
+**Unique:** `(provider, provider_subject)` WHERE provider_subject IS NOT NULL (optional partial unique in Flyway)
+
+---
+
+## exercise
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| name | varchar(120) | NOT NULL, UNIQUE | |
+| description | text | NULL | |
+| category | varchar(20) | NOT NULL, CHECK | PULL, PUSH, … |
+| metric_type | varchar(20) | NOT NULL, CHECK | REPS, TIME, … |
+| difficulty | varchar(20) | NOT NULL, CHECK | |
+| thumbnail_url | text | NULL | later |
+| demo_video_url | text | NULL | later — how to perform |
+| status | varchar(20) | NOT NULL, DEFAULT `ACTIVE`, CHECK | |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+---
+
+## node
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| name | varchar(120) | NOT NULL, UNIQUE | |
+| description | text | NULL | |
+| node_type | varchar(20) | NOT NULL, CHECK | MILESTONE, SKILL, HOLD, MOBILITY |
+| exercise_id | uuid | FK → exercise(id), NOT NULL | |
+| target_value | numeric(10,2) | NOT NULL | e.g. 10 |
+| operator | varchar(5) | NOT NULL, CHECK | >=, <=, ==, <, > |
+| unit_label | varchar(20) | NOT NULL | REPS, SEC, … |
+| difficulty | varchar(20) | NOT NULL, CHECK | can differ from exercise (e.g. First vs 10 Pull-ups) |
+| xp_reward | int | NULL | later |
+| estimated_minutes | int | NULL | |
+| status | varchar(20) | NOT NULL, DEFAULT `ACTIVE`, CHECK | |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+**No `category` on node** — use `exercise.category` via `exercise_id` (avoids duplicate / drift).
+
+---
+
+## node_edge
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| from_node_id | uuid | FK → node(id), NOT NULL | **prerequisite** |
+| to_node_id | uuid | FK → node(id), NOT NULL | **next skill** |
+| relation_type | varchar(20) | NOT NULL, DEFAULT `PREREQUISITE`, CHECK | |
+| created_at | timestamptz | NOT NULL, default now() | |
+
+**Unique:** `(from_node_id, to_node_id)`  
+**Check:** `from_node_id <> to_node_id`
+
+Example: Australian Pull-up → Band Assisted Pull-up → … → Muscle-Up.
+
+---
+
+## workout
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| title | varchar(160) | NOT NULL | |
+| description | text | NULL | |
+| goal_node_id | uuid | FK → node(id), NOT NULL | skill this workout trains |
+| difficulty | varchar(20) | NOT NULL, CHECK | |
+| created_by_user_id | uuid | FK → app_user(id), NULL | admin |
+| status | varchar(20) | NOT NULL, DEFAULT `ACTIVE`, CHECK | |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+---
+
+## workout_exercise
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| workout_id | uuid | FK → workout(id) ON DELETE CASCADE, NOT NULL | |
+| exercise_id | uuid | FK → exercise(id), NOT NULL | |
+| sequence | int | NOT NULL, CHECK >= 1 | order in workout |
+| target_sets | int | NULL | |
+| target_reps | int | NULL | |
+| target_hold_seconds | int | NULL | |
+| target_rest_seconds | int | NULL | |
+| notes | text | NULL | |
+| demo_video_url | text | NULL | later |
+
+**Unique:** `(workout_id, sequence)`
+
+---
+
+## user_node
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| user_id | uuid | FK → app_user(id) ON DELETE CASCADE, NOT NULL | |
+| node_id | uuid | FK → node(id), NOT NULL | |
+| status | varchar(20) | NOT NULL, CHECK | LOCKED, AVAILABLE, … |
+| progress_percentage | numeric(5,2) | NOT NULL, DEFAULT 0, CHECK 0–100 | |
+| verified | boolean | NOT NULL, DEFAULT false | |
+| verified_by_ai | boolean | NOT NULL, DEFAULT false | V2 |
+| last_attempt_at | timestamptz | NULL | |
+| best_score | numeric(5,2) | NULL | |
+| current_score | numeric(5,2) | NULL | |
+| unlocked_at | timestamptz | NULL | |
+| mastery | varchar(20) | NULL, CHECK | later |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+**Unique:** `(user_id, node_id)`
+
+---
+
+## assessment
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| user_id | uuid | FK → app_user(id) ON DELETE CASCADE, NOT NULL | |
+| node_id | uuid | FK → node(id), NOT NULL | skill being proved (usually workout.goal_node_id) |
+| workout_session_id | uuid | FK → workout_session(id), NULL | set when verifying after a completed session |
+| status | varchar(20) | NOT NULL, CHECK | |
+| video_url | text | NULL | required by app when submitting proof |
+| attempt_score | numeric(5,2) | NULL | |
+| ai_form_score | numeric(5,2) | NULL | V2 |
+| verified | boolean | NOT NULL, DEFAULT false | manual in MVP |
+| remarks | text | NULL | |
+| performed_at | timestamptz | NOT NULL, default now() | |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+Used after a session is `COMPLETED` to prove the workout’s goal node. Onboarding **placement questions** do not create assessments (no video yet).
+
+---
+
+## workout_session
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| user_id | uuid | FK → app_user(id) ON DELETE CASCADE, NOT NULL | |
+| workout_id | uuid | FK → workout(id), NOT NULL | workout → `goal_node_id` = focus skill |
+| status | varchar(20) | NOT NULL, DEFAULT `PENDING`, CHECK | PENDING → IN_PROGRESS → COMPLETED |
+| verified | boolean | NOT NULL, DEFAULT false | true only after PASSED assessment on goal node |
+| started_at | timestamptz | NULL | set when status → IN_PROGRESS |
+| completed_at | timestamptz | NULL | set when status → COMPLETED |
+| duration_seconds | int | NULL | derived OK |
+| calories | int | NULL | optional |
+| ai_score | numeric(5,2) | NULL | later |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+**App rule:** at most one `PENDING` or `IN_PROGRESS` session per user.
+
+**Unlock next workout:** only when `status = COMPLETED` **and** `verified = true`.
+
+---
+
+## exercise_attempt
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| workout_session_id | uuid | FK → workout_session(id) ON DELETE CASCADE, NOT NULL | |
+| workout_exercise_id | uuid | FK → workout_exercise(id), NOT NULL | |
+| actual_sets | int | NULL | filled as user logs |
+| actual_reps | int | NULL | |
+| actual_hold_seconds | int | NULL | |
+| actual_rest_seconds | int | NULL | |
+| video_url | text | NULL | unused in MVP |
+| notes | text | NULL | |
+| ai_score | numeric(5,2) | NULL | later |
+| status | varchar(20) | NOT NULL, DEFAULT `IN_PROGRESS`, CHECK | IN_PROGRESS → COMPLETED / SKIPPED |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+
+Created when the user **starts** that exercise line (not only at session end).
+
+**Unique:** `(workout_session_id, workout_exercise_id)`
+
+---
+
+## Relationship summary
+
+| From | To | FK | Cardinality |
+| --- | --- | --- | --- |
+| user_auth_identity | app_user | user_id | N:1 |
+| app_user | node | current_goal_node_id | N:1 |
+| node | exercise | exercise_id | N:1 |
+| node_edge | node | from_node_id, to_node_id | N:1 each |
+| workout | node | goal_node_id | N:1 |
+| workout_exercise | workout, exercise | | N:1 each |
+| user_node | app_user, node | | N:1 each |
+| assessment | app_user, node | | N:1 each |
+| assessment | workout_session | workout_session_id | N:1 (optional) |
+| workout_session | app_user, workout | | N:1 each |
+| exercise_attempt | workout_session, workout_exercise | | N:1 each |
