@@ -11,17 +11,37 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
 public class OpenApiConfig {
 
-	@Value("${server.port:8084}")
-	private String serverPort;
+	/**
+	 * Public base URL for Swagger "Try it out" (e.g. https://calistrack-backend.onrender.com).
+	 * Do not use {@code server.port} here — on Render that is an internal port (often 10000).
+	 */
+	@Value("${openapi.server-url:}")
+	private String openApiServerUrl;
+
+	@Value("${openapi.local-server-url:http://localhost:8084}")
+	private String localServerUrl;
 
 	@Bean
 	OpenAPI calistrackOpenAPI() {
 		final String bearerScheme = "bearerAuth";
+
+		List<Server> servers = new ArrayList<>();
+		if (openApiServerUrl != null && !openApiServerUrl.isBlank()) {
+			servers.add(new Server()
+					.url(trimTrailingSlash(openApiServerUrl.trim()))
+					.description("Deployed"));
+		}
+		// Relative URL = whatever host you opened Swagger on (works on Render + local)
+		servers.add(new Server().url("/").description("Current host"));
+		servers.add(new Server()
+				.url(trimTrailingSlash(localServerUrl))
+				.description("Local"));
 
 		return new OpenAPI()
 				.info(new Info()
@@ -37,11 +57,7 @@ public class OpenApiConfig {
 								""")
 						.version("v1")
 						.contact(new Contact().name("Calistrack")))
-				.servers(List.of(
-						new Server()
-								.url("http://localhost:" + serverPort)
-								.description("Local")
-				))
+				.servers(servers)
 				.components(new Components()
 						.addSecuritySchemes(bearerScheme, new SecurityScheme()
 								.name(bearerScheme)
@@ -50,5 +66,12 @@ public class OpenApiConfig {
 								.bearerFormat("JWT")
 								.description("Firebase ID token from login/register (`idToken`)")))
 				.addSecurityItem(new SecurityRequirement().addList(bearerScheme));
+	}
+
+	private static String trimTrailingSlash(String url) {
+		if (url.endsWith("/")) {
+			return url.substring(0, url.length() - 1);
+		}
+		return url;
 	}
 }
