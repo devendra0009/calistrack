@@ -53,13 +53,28 @@ Assume catalog seed already loaded (N1…N10, W1…W3).
 | --- | --- |
 | U-DAVE, Dave, USER, goal=null | LOCAL, dave@example.com, hash… |
 
+Also issues access JWT + refresh token → INSERT `refresh_token` (hash only).
+
 **Stories:** US-01
 
 ---
 
-## Step 2 — Login
+## Step 2 — Login / refresh / logout
 
-**API** `POST /api/v1/auth/login` → JWT
+**API** `POST /api/v1/auth/login`  
+→ access JWT (not in DB) + refresh → new `refresh_token` row
+
+| id | user_id | token_hash | expires_at | revoked_at |
+| --- | --- | --- | --- | --- |
+| RT1 | U-DAVE | a1b2c3… | +30d | null |
+
+**API** `POST /api/v1/auth/refresh` `{ "refreshToken": "…" }`  
+→ find hash, not revoked → revoke RT1, insert RT2, new access JWT
+
+**API** `POST /api/v1/auth/logout`  
+→ set `revoked_at` on current refresh row
+
+Protected APIs: `Authorization: Bearer <access JWT>` — signature check only.
 
 **Stories:** US-02
 

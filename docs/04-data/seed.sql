@@ -19,6 +19,7 @@ CREATE TABLE app_user (
     current_goal_node_id    UUID,
     role                    VARCHAR(20) NOT NULL DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN')),
     avatar_url              TEXT,
+    deleted_at              TIMESTAMPTZ,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -26,7 +27,7 @@ CREATE TABLE app_user (
 CREATE TABLE user_auth_identity (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id             UUID NOT NULL REFERENCES app_user (id) ON DELETE CASCADE,
-    provider            VARCHAR(20) NOT NULL CHECK (provider IN ('LOCAL')),
+    provider            VARCHAR(20) NOT NULL CHECK (provider IN ('LOCAL', 'FIREBASE')),
     email               VARCHAR(255) NOT NULL,
     password_hash       TEXT,
     provider_subject    VARCHAR(255),
@@ -36,6 +37,18 @@ CREATE TABLE user_auth_identity (
     CONSTRAINT chk_local_password CHECK (
         provider <> 'LOCAL' OR password_hash IS NOT NULL
     )
+);
+
+CREATE TABLE refresh_token (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id             UUID NOT NULL REFERENCES app_user (id) ON DELETE CASCADE,
+    token_hash          VARCHAR(64) NOT NULL UNIQUE,
+    expires_at          TIMESTAMPTZ NOT NULL,
+    revoked_at          TIMESTAMPTZ,
+    replaced_by_id      UUID REFERENCES refresh_token (id),
+    user_agent          VARCHAR(512),
+    ip_address          VARCHAR(45),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE exercise (
@@ -81,6 +94,20 @@ CREATE TABLE node_edge (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_node_edge UNIQUE (from_node_id, to_node_id),
     CONSTRAINT chk_node_edge_not_self CHECK (from_node_id <> to_node_id)
+);
+
+-- Placement questionnaire prompts keyed by current goal node
+-- (path order itself is derived by walking node_edge back from the goal)
+CREATE TABLE path_question (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    goal_node_id    UUID NOT NULL REFERENCES node (id),
+    node_id         UUID NOT NULL REFERENCES node (id),
+    prompt          TEXT NOT NULL,
+    answer_type     VARCHAR(20) NOT NULL CHECK (answer_type IN ('REPS', 'YES_NO')),
+    sort_order      INT NOT NULL CHECK (sort_order >= 1),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_path_question_goal_sort UNIQUE (goal_node_id, sort_order),
+    CONSTRAINT uq_path_question_goal_node UNIQUE (goal_node_id, node_id)
 );
 
 CREATE TABLE workout (
@@ -236,6 +263,15 @@ INSERT INTO node_edge (from_node_id, to_node_id) VALUES
 ('22222222-2222-2222-2222-222222220007', '22222222-2222-2222-2222-222222220010'), -- CTB → Muscle Up
 ('22222222-2222-2222-2222-222222220008', '22222222-2222-2222-2222-222222220007'), -- Explosive → CTB
 ('22222222-2222-2222-2222-222222220009', '22222222-2222-2222-2222-222222220010'); -- 15 Dips → Muscle Up
+
+-- Placement questions for Muscle Up goal (path order comes from node_edge walk)
+INSERT INTO path_question (goal_node_id, node_id, prompt, answer_type, sort_order) VALUES
+('22222222-2222-2222-2222-222222220010', '22222222-2222-2222-2222-222222220001',
+ 'How many Australian Pull-ups can you do?', 'REPS', 1),
+('22222222-2222-2222-2222-222222220010', '22222222-2222-2222-2222-222222220005',
+ 'Can you do 5 Pull-ups?', 'YES_NO', 2),
+('22222222-2222-2222-2222-222222220010', '22222222-2222-2222-2222-222222220006',
+ 'Can you do 10 Pull-ups?', 'YES_NO', 3);
 
 -- Workouts
 INSERT INTO workout (id, title, description, goal_node_id, difficulty) VALUES

@@ -59,4 +59,6 @@ N9 → N10
 
 Admin/seed already filled: `exercise`, `node`, `node_edge`, `workout`, `workout_exercise`.
 
-Dave’s journey only writes **dynamic** tables: `app_user`, `user_auth_identity`, `user_node`, `assessment`, `workout_session`, `exercise_attempt`.
+Dave’s journey writes **dynamic** tables: `app_user`, `user_auth_identity`, `refresh_token`, `user_node`, `assessment`, `workout_session`, `exercise_attempt`.
+
+Access JWTs are never stored (see [ADR-011](../06-decisions/ADR-011-jwt-refresh-tokens.md)).

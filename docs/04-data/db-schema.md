@@ -20,6 +20,7 @@ Canonical CREATE + seed: [`seed.sql`](seed.sql).
 | current_goal_node_id | uuid | FK → node(id), NULL | set after onboarding |
 | role | varchar(20) | NOT NULL, DEFAULT `USER`, CHECK IN (`USER`,`ADMIN`) | |
 | avatar_url | text | NULL | Cloudinary later |
+| deleted_at | timestamptz | NULL | soft delete; NULL = active |
 | created_at | timestamptz | NOT NULL, default now() | |
 | updated_at | timestamptz | NOT NULL, default now() | |
 
@@ -40,6 +41,28 @@ Canonical CREATE + seed: [`seed.sql`](seed.sql).
 
 **Unique:** `(provider, email)`  
 **Unique:** `(provider, provider_subject)` WHERE provider_subject IS NOT NULL (optional partial unique in Flyway)
+
+Access JWTs are **not** stored here (see `refresh_token` + [ADR-011](../06-decisions/ADR-011-jwt-refresh-tokens.md)).
+
+---
+
+## refresh_token
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| user_id | uuid | FK → app_user(id) ON DELETE CASCADE, NOT NULL | |
+| token_hash | varchar(64) | NOT NULL, UNIQUE | SHA-256 hex of raw refresh token |
+| expires_at | timestamptz | NOT NULL | |
+| revoked_at | timestamptz | NULL | NULL = active |
+| replaced_by_id | uuid | FK → refresh_token(id), NULL | set on rotation |
+| user_agent | varchar(512) | NULL | optional device hint |
+| ip_address | varchar(45) | NULL | optional |
+| created_at | timestamptz | NOT NULL, default now() | |
+
+**Active token:** `revoked_at IS NULL` AND `expires_at > now()`.
+
+**Never store** the raw refresh token or access JWT in this table.
 
 ---
 
@@ -98,6 +121,28 @@ Canonical CREATE + seed: [`seed.sql`](seed.sql).
 **Check:** `from_node_id <> to_node_id`
 
 Example: Australian Pull-up → Band Assisted Pull-up → … → Muscle-Up.
+
+Onboarding **path order** is derived at runtime by walking this graph backward from the goal node (ancestor closure + topological sort). No separate path-order table.
+
+---
+
+## path_question
+
+Placement questionnaire rows keyed by `current_goal_node` / goal node.
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| goal_node_id | uuid | FK → node(id), NOT NULL | which goal these questions belong to |
+| node_id | uuid | FK → node(id), NOT NULL | skill the answer places against |
+| prompt | text | NOT NULL | UI copy |
+| answer_type | varchar(20) | NOT NULL, CHECK | `REPS`, `YES_NO` |
+| sort_order | int | NOT NULL, CHECK >= 1 | question order |
+| created_at | timestamptz | NOT NULL, default now() | |
+
+**Unique:** `(goal_node_id, sort_order)`, `(goal_node_id, node_id)`
+
+Answers are one-shot V1 (not stored); they only drive `user_node` + first `workout_session`.
 
 ---
 
@@ -233,9 +278,11 @@ Created when the user **starts** that exercise line (not only at session end).
 | From | To | FK | Cardinality |
 | --- | --- | --- | --- |
 | user_auth_identity | app_user | user_id | N:1 |
+| refresh_token | app_user | user_id | N:1 |
 | app_user | node | current_goal_node_id | N:1 |
 | node | exercise | exercise_id | N:1 |
 | node_edge | node | from_node_id, to_node_id | N:1 each |
+| path_question | node | goal_node_id, node_id | N:1 each |
 | workout | node | goal_node_id | N:1 |
 | workout_exercise | workout, exercise | | N:1 each |
 | user_node | app_user, node | | N:1 each |

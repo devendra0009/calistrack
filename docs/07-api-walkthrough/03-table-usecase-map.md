@@ -7,7 +7,8 @@ What each table (and key columns) is for. Use this to drop unused V1 columns.
 | Table | Powers these screens / APIs | Key columns |
 | --- | --- | --- |
 | `app_user` | Profile, home greeting, goal | `display_name`, body stats, `current_goal_node_id`, `role` |
-| `user_auth_identity` | Register/login | `provider`, `email`, `password_hash` |
+| `user_auth_identity` | Register/login credentials | `provider`, `email`, `password_hash` |
+| `refresh_token` | Refresh / logout / rotate | `token_hash`, `expires_at`, `revoked_at` |
 | `user_node` | Skill list %, unlock state after verify | `status`, `progress_percentage`, `verified` |
 | `workout_session` | “What am I training?”, train loop, history | `status` (PENDING→…), `verified`, `workout_id`, timestamps |
 | `exercise_attempt` | Per-line logging inside a session | `status` (IN_PROGRESS→COMPLETED), actual sets/reps |

@@ -27,7 +27,7 @@ Repo folder: `frontend/`
 | Framework | Spring Boot 3.x |
 | Build | Maven |
 | API docs | Springdoc OpenAPI |
-| Security | Spring Security + JWT (email/password) |
+| Security | Spring Security + short-lived access JWT + hashed `refresh_token` rows ([ADR-011](../06-decisions/ADR-011-jwt-refresh-tokens.md)) |
 | Persistence | Spring Data JPA |
 | Migrations | Flyway |
 

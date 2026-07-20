@@ -6,7 +6,7 @@ Tech-agnostic. Implementation: PostgreSQL (see `db-schema.md`).
 
 | Group | Entities | Mutability |
 | --- | --- | --- |
-| Identity | User, UserAuthIdentity | Dynamic |
+| Identity | User, UserAuthIdentity, RefreshToken | Dynamic |
 | Catalog | Exercise, Node, NodeEdge, Workout, WorkoutExercise | Static (admin/seed) |
 | Progress | UserNode, Assessment | Dynamic |
 | Training | WorkoutSession, ExerciseAttempt | Dynamic |
@@ -20,6 +20,10 @@ Athlete profile. Holds `current_goal` → Node. Password is **not** on User — 
 ### UserAuthIdentity
 
 How the user signs in. V1: one `LOCAL` row (email + password hash). Ready for more providers later without reshaping User.
+
+### RefreshToken
+
+Hashed refresh token for session continuity and logout/revoke. Access JWTs are **not** persisted — see [ADR-011](../06-decisions/ADR-011-jwt-refresh-tokens.md).
 
 ### Exercise
 
@@ -62,6 +66,7 @@ Video proof for a Node (usually the completed session’s `workout.goal_node_id`
 ```mermaid
 erDiagram
   User ||--o{ UserAuthIdentity : has
+  User ||--o{ RefreshToken : has
   User ||--o| Node : current_goal
   User ||--o{ UserNode : progress
   User ||--o{ Assessment : attempts

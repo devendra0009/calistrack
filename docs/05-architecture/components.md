@@ -24,9 +24,10 @@ Modular monolith (packages/modules, one deployable):
 
 | Module | Responsibility |
 | --- | --- |
-| auth | Register/login, JWT, Spring Security |
+| auth | Register/login/logout/refresh; access JWT validate; refresh_token hash store |
 | user | Profile CRUD, goal skill |
 | catalog | Exercise, Node, NodeEdge, Workout (admin + read) |
+| onboarding | Path questions + answers; place UserNodes; first PENDING session |
 | progress | UserNode, progress % |
 | assessment | Create assessment, video URL, manual verify |
 | workout | Start/complete session, exercise attempts |

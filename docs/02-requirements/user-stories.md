@@ -11,7 +11,7 @@ Status: `MVP` | `Later`
 | ID | Story | Status |
 | --- | --- | --- |
 | US-01 | As a new user, I want to register with email and password so I can use the app. | MVP |
-| US-02 | As a user, I want to log in and log out. | MVP |
+| US-02 | As a user, I want to log in, refresh my session, and log out. | MVP |
 | US-03 | As a user, I want to view, edit, and delete my profile (name, body stats, experience). | MVP |
 | US-04 | As a user, I want guest / OTP / OAuth / MFA login. | Later |
 

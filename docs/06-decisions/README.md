@@ -14,6 +14,7 @@ Short Architecture Decision Records. One decision per file.
 | [ADR-008](ADR-008-check-vs-lookup.md) | CHECK enums for V1 |
 | [ADR-009](ADR-009-defer-ai-service.md) | Defer Python AI |
 | [ADR-010](ADR-010-pending-session-verify-loop.md) | PENDING session → train → verify → next |
+| [ADR-011](ADR-011-jwt-refresh-tokens.md) | Access JWT + hashed refresh tokens |
 
 ## How to update
 

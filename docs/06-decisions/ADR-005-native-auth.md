@@ -18,3 +18,4 @@ MVP needs login. Options: Firebase Auth vs Spring Security email/password.
 
 - We own password hashing, reset flows, token refresh
 - Firebase deferred (can revisit if auth becomes the bottleneck)
+- Token details: [ADR-011](ADR-011-jwt-refresh-tokens.md)
