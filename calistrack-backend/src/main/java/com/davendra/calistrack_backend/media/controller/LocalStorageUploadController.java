@@ -3,6 +3,7 @@ package com.davendra.calistrack_backend.media.controller;
 import com.davendra.calistrack_backend.media.provider.local.LocalStorageProvider;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +25,7 @@ import java.nio.file.Path;
  */
 @RestController
 @RequestMapping("/api/v1/media/local")
+@ConditionalOnBean(LocalStorageProvider.class)
 @Hidden
 public class LocalStorageUploadController {
 

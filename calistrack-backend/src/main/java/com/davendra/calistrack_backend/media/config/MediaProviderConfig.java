@@ -88,6 +88,7 @@ public class MediaProviderConfig {
 	}
 
 	@Bean
+	@ConditionalOnProperty(prefix = "media.local", name = "enabled", havingValue = "true")
 	LocalStorageProvider localStorageProvider(MediaProperties properties) {
 		return new LocalStorageProvider(properties);
 	}
@@ -117,7 +118,11 @@ public class MediaProviderConfig {
 					}
 				}
 				case LOCAL -> {
-					// always available
+					if (!properties.getLocal().isEnabled()) {
+						throw new IllegalStateException(
+								"media.primary-provider=local requires media.local.enabled=true"
+						);
+					}
 				}
 			}
 		}

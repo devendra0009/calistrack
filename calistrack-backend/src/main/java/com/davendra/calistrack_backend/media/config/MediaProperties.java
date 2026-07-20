@@ -210,8 +210,18 @@ public class MediaProperties {
 	}
 
 	public static class Local {
+		/** Dev/test only. Leave false in Docker/Render when using Cloudinary or S3. */
+		private boolean enabled = false;
 		private String basePath = "./media-uploads";
 		private String publicBaseUrl = "http://localhost:8084/api/v1/media/local";
+
+		public boolean isEnabled() {
+			return enabled;
+		}
+
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
 
 		public String getBasePath() {
 			return basePath;
