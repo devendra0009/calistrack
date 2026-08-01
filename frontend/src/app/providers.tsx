@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router'
 import { Toaster } from 'sonner'
 import { AuthSessionProvider } from '@/features/auth/AuthSessionProvider'
 import { router } from '@/app/router'
+import { ThemeProvider, useTheme } from '@/shared/theme/ThemeProvider'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -13,13 +14,20 @@ const queryClient = new QueryClient({
   },
 })
 
+function ThemedToaster() {
+  const { theme } = useTheme()
+  return <Toaster richColors position="top-center" theme={theme} />
+}
+
 export function AppProviders() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthSessionProvider>
-        <RouterProvider router={router} />
-        <Toaster richColors position="top-center" />
-      </AuthSessionProvider>
+      <ThemeProvider>
+        <AuthSessionProvider>
+          <RouterProvider router={router} />
+          <ThemedToaster />
+        </AuthSessionProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

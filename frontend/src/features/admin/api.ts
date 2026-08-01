@@ -11,6 +11,9 @@ import type {
   AdminPathQuestionResponse,
   AdminWorkoutExerciseRequest,
   AdminWorkoutExerciseResponse,
+  AdminWorkoutPlanRequest,
+  AdminWorkoutPlanResponse,
+  AdminWorkoutPlanSummaryResponse,
   AdminWorkoutRequest,
   AdminWorkoutResponse,
   AdminWorkoutSummaryResponse,
@@ -24,6 +27,9 @@ export const adminKeys = {
   workouts: (status?: string, goalNodeId?: string) =>
     ['admin', 'workouts', status ?? 'all', goalNodeId ?? 'all'] as const,
   workout: (id: string) => ['admin', 'workout', id] as const,
+  workoutPlans: (status?: string, nodeId?: string) =>
+    ['admin', 'workout-plans', status ?? 'all', nodeId ?? 'all'] as const,
+  workoutPlan: (id: string) => ['admin', 'workout-plan', id] as const,
   pathQuestions: (goalNodeId?: string) =>
     ['admin', 'path-questions', goalNodeId ?? 'all'] as const,
 }
@@ -283,6 +289,68 @@ export function useDeleteWorkoutExercise() {
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: adminKeys.workout(vars.workoutId) })
       void qc.invalidateQueries({ queryKey: ['admin', 'workouts'] })
+    },
+  })
+}
+
+// ── Workout plans ──────────────────────────────────────────
+
+export function useAdminWorkoutPlans(opts?: { status?: string; nodeId?: string }) {
+  const status = opts?.status
+  const nodeId = opts?.nodeId
+  const enabled = useAdminEnabled()
+  return useQuery({
+    queryKey: adminKeys.workoutPlans(status, nodeId),
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (status) params.set('status', status)
+      if (nodeId) params.set('nodeId', nodeId)
+      const q = params.toString() ? `?${params}` : ''
+      return api.get<AdminWorkoutPlanSummaryResponse[]>(`/api/v1/admin/workout-plans${q}`)
+    },
+    enabled,
+  })
+}
+
+export function useAdminWorkoutPlan(id: string | undefined) {
+  const enabled = useAdminEnabled()
+  return useQuery({
+    queryKey: adminKeys.workoutPlan(id ?? ''),
+    queryFn: () => api.get<AdminWorkoutPlanResponse>(`/api/v1/admin/workout-plans/${id}`),
+    enabled: enabled && Boolean(id),
+  })
+}
+
+export function useCreateWorkoutPlan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: AdminWorkoutPlanRequest) =>
+      api.post<AdminWorkoutPlanResponse>('/api/v1/admin/workout-plans', body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'workout-plans'] })
+    },
+  })
+}
+
+export function useUpdateWorkoutPlan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: AdminWorkoutPlanRequest }) =>
+      api.put<AdminWorkoutPlanResponse>(`/api/v1/admin/workout-plans/${id}`, body),
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'workout-plans'] })
+      qc.setQueryData(adminKeys.workoutPlan(data.id), data)
+    },
+  })
+}
+
+export function useDeprecateWorkoutPlan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete<AdminWorkoutPlanResponse>(`/api/v1/admin/workout-plans/${id}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'workout-plans'] })
     },
   })
 }

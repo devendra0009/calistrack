@@ -8,6 +8,7 @@ import {
   RequirePlacedLayout,
   SetupIndexRedirect,
 } from '@/app/guards'
+import { AppLayout } from '@/app/AppLayout'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { RegisterPage } from '@/features/auth/pages/RegisterPage'
 import { GoalPage } from '@/features/onboarding/pages/GoalPage'
@@ -15,6 +16,8 @@ import { QuestionsPage } from '@/features/onboarding/pages/QuestionsPage'
 import { PlacementResultPage } from '@/features/onboarding/pages/PlacementResultPage'
 import { HomePage } from '@/features/home/pages/HomePage'
 import { WorkoutSessionPage } from '@/features/home/pages/WorkoutSessionPage'
+import { StretchTodayPage } from '@/features/stretching/pages/StretchTodayPage'
+import { AssessmentPage } from '@/features/assessment/pages/AssessmentPage'
 import { ProfilePage } from '@/features/profile/pages/ProfilePage'
 import { AdminLayout } from '@/features/admin/layout/AdminLayout'
 import { AdminHomePage } from '@/features/admin/pages/AdminHomePage'
@@ -22,6 +25,8 @@ import { AdminExercisesPage } from '@/features/admin/pages/AdminExercisesPage'
 import { AdminNodesPage } from '@/features/admin/pages/AdminNodesPage'
 import { AdminWorkoutsPage } from '@/features/admin/pages/AdminWorkoutsPage'
 import { AdminWorkoutDetailPage } from '@/features/admin/pages/AdminWorkoutDetailPage'
+import { AdminWorkoutPlansPage } from '@/features/admin/pages/AdminWorkoutPlansPage'
+import { AdminWorkoutPlanDetailPage } from '@/features/admin/pages/AdminWorkoutPlanDetailPage'
 import { AdminPathPage } from '@/features/admin/pages/AdminPathPage'
 import { AdminPathQuestionsPage } from '@/features/admin/pages/AdminPathQuestionsPage'
 
@@ -56,6 +61,8 @@ export const router = createBrowserRouter(
               { path: 'nodes', element: <AdminNodesPage /> },
               { path: 'workouts', element: <AdminWorkoutsPage /> },
               { path: 'workouts/:workoutId', element: <AdminWorkoutDetailPage /> },
+              { path: 'workout-plans', element: <AdminWorkoutPlansPage /> },
+              { path: 'workout-plans/:planId', element: <AdminWorkoutPlanDetailPage /> },
               { path: 'path', element: <AdminPathPage /> },
               { path: 'path-questions', element: <AdminPathQuestionsPage /> },
             ],
@@ -77,9 +84,16 @@ export const router = createBrowserRouter(
           {
             element: <RequirePlacedLayout />,
             children: [
-              { path: '/home', element: <HomePage /> },
-              { path: '/sessions/:sessionId', element: <WorkoutSessionPage /> },
-              { path: '/profile', element: <ProfilePage /> },
+              {
+                element: <AppLayout />,
+                children: [
+                  { path: '/home', element: <HomePage /> },
+                  { path: '/stretch', element: <StretchTodayPage /> },
+                  { path: '/sessions/:sessionId', element: <WorkoutSessionPage /> },
+                  { path: '/assessment', element: <AssessmentPage /> },
+                  { path: '/profile', element: <ProfilePage /> },
+                ],
+              },
             ],
           },
         ],

@@ -102,7 +102,7 @@ export function AdminNodesPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
             Step 2
           </p>
           <h1 className="text-2xl font-bold text-stone-900">Goals / Nodes</h1>
@@ -128,7 +128,7 @@ export function AdminNodesPage() {
       {showForm ? (
         <form
           onSubmit={onSubmit}
-          className="space-y-3 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm"
+          className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/90 p-5 shadow-sm"
         >
           <h2 className="font-semibold text-stone-900">
             {editingId ? 'Edit goal' : 'Create goal'}
@@ -143,7 +143,7 @@ export function AdminNodesPage() {
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-stone-800">Description</span>
             <textarea
-              className="min-h-20 rounded-lg border border-stone-300 bg-white px-3 py-2 outline-none ring-emerald-600/30 focus:ring-2"
+              className="min-h-20 rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 outline-none ring-emerald-600/30 focus:ring-2"
               value={form.description ?? ''}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
@@ -246,7 +246,7 @@ export function AdminNodesPage() {
           {(nodes.data ?? []).map((node) => (
             <li
               key={node.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/90 px-4 py-3 shadow-sm"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50/90 px-4 py-3 shadow-sm"
             >
               <div>
                 <p className="font-semibold text-stone-900">{node.name}</p>

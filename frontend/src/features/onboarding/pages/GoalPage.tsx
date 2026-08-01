@@ -61,7 +61,7 @@ export function GoalPage() {
                 'w-full rounded-2xl border px-5 py-4 text-left transition',
                 active
                   ? 'border-emerald-700 bg-emerald-50 ring-2 ring-emerald-700/20'
-                  : 'border-stone-200 bg-white hover:border-stone-300',
+                  : 'border-stone-200 bg-stone-50 hover:border-stone-300',
               )}
             >
               <div className="flex items-center justify-between gap-3">

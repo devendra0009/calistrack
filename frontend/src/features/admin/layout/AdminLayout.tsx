@@ -7,6 +7,7 @@ import { useAuthSession } from '@/features/auth/AuthSessionProvider'
 import { useMe } from '@/features/profile/api'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
+import { ThemeToggle } from '@/shared/ui/ThemeToggle'
 
 export function AdminLayout() {
   const me = useMe()
@@ -14,8 +15,8 @@ export function AdminLayout() {
   const { signOutLocal } = useAuthSession()
 
   return (
-    <div className="min-h-dvh bg-[radial-gradient(ellipse_at_top,_#ecfdf5_0%,_#fafaf9_45%,_#f5f5f4_100%)]">
-      <header className="border-b border-stone-200/80 bg-white/70 backdrop-blur">
+    <div className="bg-app min-h-dvh">
+      <header className="border-b border-stone-200/80 bg-stone-50/70 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
           <div className="flex items-center gap-3">
             <Link to="/admin" className="text-lg font-bold tracking-tight text-emerald-900">
@@ -25,20 +26,23 @@ export function AdminLayout() {
               {me.data?.displayName ?? 'Admin'}
             </span>
           </div>
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              try {
-                await logout()
-              } finally {
-                signOutLocal()
-                toast.success('Signed out')
-                startTransition(() => navigate('/login', { replace: true }))
-              }
-            }}
-          >
-            Sign out
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  await logout()
+                } finally {
+                  signOutLocal()
+                  toast.success('Signed out')
+                  startTransition(() => navigate('/login', { replace: true }))
+                }
+              }}
+            >
+              Sign out
+            </Button>
+          </div>
         </div>
       </header>
 

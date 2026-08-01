@@ -12,9 +12,10 @@ Canonical CREATE + seed: [`seed.sql`](seed.sql).
 | --- | --- | --- | --- |
 | id | uuid | PK, default gen_random_uuid() | |
 | display_name | varchar(100) | NOT NULL | |
-| height_cm | numeric(5,2) | NULL | |
-| weight_kg | numeric(5,2) | NULL | |
-| age | int | NULL, CHECK > 0 | |
+| height_cm | numeric(5,2) | NULL | stored metric; UI may enter ft/in |
+| weight_kg | numeric(5,2) | NULL | stored metric; UI may enter lb |
+| age | int | NULL, CHECK > 0 | legacy; prefer date_of_birth |
+| date_of_birth | date | NULL | source of truth for age (computed in API/UI) |
 | gender | varchar(20) | NULL, CHECK IN (…) | see enums |
 | experience | varchar(20) | NULL, CHECK IN (…) | |
 | current_goal_node_id | uuid | FK → node(id), NULL | set after onboarding |
@@ -155,6 +156,7 @@ Answers are one-shot V1 (not stored); they only drive `user_node` + first `worko
 | description | text | NULL | |
 | goal_node_id | uuid | FK → node(id), NOT NULL | skill this workout trains |
 | difficulty | varchar(20) | NOT NULL, CHECK | |
+| kind | varchar(20) | NOT NULL, DEFAULT `SKILL` | `SKILL` or `STRETCH` |
 | created_by_user_id | uuid | FK → app_user(id), NULL | admin |
 | status | varchar(20) | NOT NULL, DEFAULT `ACTIVE`, CHECK | |
 | created_at | timestamptz | NOT NULL, default now() | |
@@ -233,8 +235,10 @@ Used after a session is `COMPLETED` to prove the workout’s goal node. Onboardi
 | id | uuid | PK | |
 | user_id | uuid | FK → app_user(id) ON DELETE CASCADE, NOT NULL | |
 | workout_id | uuid | FK → workout(id), NOT NULL | workout → `goal_node_id` = focus skill |
+| plan_enrollment_id | uuid | FK → user_plan_enrollment(id), NULL | set for plan-driven sessions |
+| plan_day_number | int | NULL | Day N within the plan |
 | status | varchar(20) | NOT NULL, DEFAULT `PENDING`, CHECK | PENDING → IN_PROGRESS → COMPLETED |
-| verified | boolean | NOT NULL, DEFAULT false | true only after PASSED assessment on goal node |
+| verified | boolean | NOT NULL, DEFAULT false | true after PASSED assessment on node (plan complete) |
 | started_at | timestamptz | NULL | set when status → IN_PROGRESS |
 | completed_at | timestamptz | NULL | set when status → COMPLETED |
 | duration_seconds | int | NULL | derived OK |
@@ -245,7 +249,47 @@ Used after a session is `COMPLETED` to prove the workout’s goal node. Onboardi
 
 **App rule:** at most one `PENDING` or `IN_PROGRESS` session per user.
 
-**Unlock next workout:** only when `status = COMPLETED` **and** `verified = true`.
+**Unlock next plan day:** session `COMPLETED` (verified not required).
+
+**Unlock next node Day 1:** plan enrollment `AWAITING_VERIFY` + PASSED node assessment.
+
+---
+
+## workout_plan
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| node_id | uuid | FK → node(id), NOT NULL | skill / routine anchor this plan trains |
+| title | varchar(160) | NOT NULL | |
+| description | text | NULL | |
+| kind | varchar(20) | NOT NULL, DEFAULT `SKILL` | `SKILL` or `DAILY_ROUTINE` |
+| code | varchar(64) | UNIQUE, NULL | e.g. `morning_stretch` for routine lookup |
+| duration_days | int | NOT NULL, ≥ 1 | |
+| status | varchar(20) | NOT NULL, DEFAULT ACTIVE | ACTIVE / DEPRECATED; one ACTIVE per node (app rule) |
+| created_at / updated_at | timestamptz | NOT NULL | |
+
+## workout_plan_day
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| plan_id | uuid | FK → workout_plan(id) ON DELETE CASCADE | |
+| day_number | int | NOT NULL, ≥ 1 | unique per plan |
+| workout_id | uuid | FK → workout(id), NOT NULL | must belong to same node |
+
+## user_plan_enrollment
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| user_id | uuid | FK → app_user | |
+| plan_id | uuid | FK → workout_plan | |
+| node_id | uuid | FK → node | denormalized focus |
+| current_day | int | NOT NULL | |
+| status | varchar(20) | NOT NULL | ACTIVE / AWAITING_VERIFY / COMPLETED |
+| started_at / completed_at | timestamptz | | |
+| created_at / updated_at | timestamptz | NOT NULL | |
 
 ---
 

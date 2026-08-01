@@ -66,7 +66,7 @@ export function AdminWorkoutDetailPage() {
     return (
       <div className="space-y-3">
         <p className="text-sm text-red-600">Workout not found.</p>
-        <Link to="/admin/workouts" className="text-sm font-semibold text-emerald-800">
+        <Link to="/admin/workouts" className="text-sm font-semibold text-emerald-900">
           ← Back to workouts
         </Link>
       </div>
@@ -80,7 +80,7 @@ export function AdminWorkoutDetailPage() {
       <div>
         <Link
           to="/admin/workouts"
-          className="text-sm font-medium text-emerald-800 hover:underline"
+          className="text-sm font-medium text-emerald-900 hover:underline"
         >
           ← Workouts
         </Link>
@@ -91,7 +91,7 @@ export function AdminWorkoutDetailPage() {
       </div>
 
       <form
-        className="space-y-3 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm"
+        className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/90 p-5 shadow-sm"
         onSubmit={async (e) => {
           e.preventDefault()
           try {
@@ -117,7 +117,7 @@ export function AdminWorkoutDetailPage() {
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-stone-800">Description</span>
           <textarea
-            className="min-h-20 rounded-lg border border-stone-300 bg-white px-3 py-2 outline-none ring-emerald-600/30 focus:ring-2"
+            className="min-h-20 rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 outline-none ring-emerald-600/30 focus:ring-2"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -147,7 +147,7 @@ export function AdminWorkoutDetailPage() {
         </Button>
       </form>
 
-      <section className="space-y-3 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm">
+      <section className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/90 p-5 shadow-sm">
         <h2 className="font-semibold text-stone-900">Exercise lines</h2>
         <ul className="space-y-2">
           {data.exercises.map((ex) => (

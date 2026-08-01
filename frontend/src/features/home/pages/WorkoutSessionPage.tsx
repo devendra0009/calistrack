@@ -11,59 +11,94 @@ import {
   useWorkoutSessionDetail,
 } from "@/features/home/api";
 
-function targetInstruction(line: SessionExerciseLineDto): string {
-  const parts: string[] = [];
-  if (line.targetSets != null && line.targetReps != null) {
-    parts.push(`Do ${line.targetSets} sets of ${line.targetReps} reps`);
+/** Compact prescription chips: how much to do. */
+function DoseChips({ line }: { line: SessionExerciseLineDto }) {
+  const chips: string[] = [];
+  if (line.targetSets != null && line.targetHoldSeconds != null) {
+    chips.push(`${line.targetSets} × ${line.targetHoldSeconds}s`);
+  } else if (line.targetSets != null && line.targetReps != null) {
+    chips.push(`${line.targetSets} × ${line.targetReps}`);
   } else if (line.targetSets != null) {
-    parts.push(`Do ${line.targetSets} sets`);
+    chips.push(`${line.targetSets} sets`);
   } else if (line.targetReps != null) {
-    parts.push(`Do ${line.targetReps} reps`);
-  }
-  if (line.targetHoldSeconds != null) {
-    parts.push(`Hold ${line.targetHoldSeconds}s`);
+    chips.push(`${line.targetReps} reps`);
+  } else if (line.targetHoldSeconds != null) {
+    chips.push(`${line.targetHoldSeconds}s hold`);
   }
   if (line.targetRestSeconds != null) {
-    parts.push(`Rest ${line.targetRestSeconds}s between sets`);
+    chips.push(`${line.targetRestSeconds}s rest`);
   }
-  return parts.length
-    ? parts.join(". ") + "."
-    : "Complete this movement as prescribed.";
+
+  if (chips.length === 0) {
+    return (
+      <p className="mt-2 text-sm font-medium text-stone-700">
+        Complete as prescribed
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {chips.map((chip) => (
+        <span
+          key={chip}
+          className="rounded-md bg-stone-900 px-2 py-1 text-xs font-semibold tabular-nums text-stone-50"
+        >
+          {chip}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Role badge from notes like [WARMUP] / [SKILL] — hide the rest of notes. */
+function roleFromNotes(notes: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/^\s*\[([A-Z_]+)\]/);
+  return match ? match[1].replaceAll("_", " ") : null;
+}
+
+function howToSteps(description: string | null): string[] {
+  if (!description?.trim()) return [];
+  return description
+    .split(/\n+/)
+    .map((line) => line.replace(/^\s*\d+[.)]\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 4);
 }
 
 function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url) || url.includes("/video/");
 }
 
-function ExerciseMedia({ line }: { line: SessionExerciseLineDto }) {
-  const demo = line.demoVideoUrl;
-  const thumb = line.thumbnailUrl;
-  if (!demo && !thumb) return null;
+/** Inline form guide — image/video always visible, no extra click. */
+function FormGuide({ line }: { line: SessionExerciseLineDto }) {
+  const demo = line.demoVideoUrl?.trim() || null;
+  const thumb = line.thumbnailUrl?.trim() || null;
+  const demoIsVideo = Boolean(demo && isVideoUrl(demo));
+  const stillImage = thumb || (demo && !demoIsVideo ? demo : null);
 
-  if (demo && isVideoUrl(demo)) {
-    return (
-      <div className="mt-3 overflow-hidden rounded-xl border border-stone-200 bg-black">
+  if (!stillImage && !demoIsVideo) return null;
+
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
+      {demoIsVideo && demo ? (
         <video
           src={demo}
           controls
           playsInline
+          preload="metadata"
           poster={thumb ?? undefined}
-          className="aspect-video w-full object-contain"
+          className="aspect-4/3 max-h-48 w-full object-contain"
         />
-      </div>
-    );
-  }
-
-  const imageUrl = demo ?? thumb;
-  if (!imageUrl) return null;
-
-  return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
-      <img
-        src={imageUrl}
-        alt={`${line.exerciseName} demo`}
-        className="aspect-video w-full object-cover"
-      />
+      ) : stillImage ? (
+        <img
+          src={stillImage}
+          alt=""
+          className="max-h-48 w-full object-contain"
+          loading="lazy"
+        />
+      ) : null}
     </div>
   );
 }
@@ -82,10 +117,12 @@ function SessionTimer({
   startedAt,
   completedAt,
   running,
+  accent = "emerald",
 }: {
   startedAt: string | null;
   completedAt: string | null;
   running: boolean;
+  accent?: "emerald" | "sky";
 }) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -95,9 +132,22 @@ function SessionTimer({
     return () => window.clearInterval(id);
   }, [running, startedAt]);
 
+  const idleBox =
+    accent === "sky"
+      ? "rounded-2xl border border-sky-200 bg-sky-50/90 px-5 py-4 text-center"
+      : "rounded-2xl border border-stone-200 bg-stone-50/90 px-5 py-4 text-center";
+  const activeBox =
+    accent === "sky"
+      ? "rounded-2xl border border-sky-200 bg-sky-50/80 px-5 py-4 text-center"
+      : "rounded-2xl border border-emerald-200 bg-emerald-50/80 px-5 py-4 text-center";
+  const labelColor =
+    accent === "sky" ? "text-sky-900" : "text-emerald-900";
+  const valueColor =
+    accent === "sky" ? "text-sky-950" : "text-emerald-950";
+
   if (!startedAt) {
     return (
-      <div className="rounded-2xl border border-stone-200 bg-white/90 px-5 py-4 text-center">
+      <div className={idleBox}>
         <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
           Session timer
         </p>
@@ -113,11 +163,11 @@ function SessionTimer({
   const elapsed = Math.max(0, Math.floor((endMs - startMs) / 1000));
 
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-5 py-4 text-center">
-      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
-        {running ? "Training" : "Final time"}
+    <div className={activeBox}>
+      <p className={`text-xs font-semibold uppercase tracking-wide ${labelColor}`}>
+        {running ? (accent === "sky" ? "Stretching" : "Training") : "Final time"}
       </p>
-      <p className="mt-1 font-mono text-3xl font-bold tabular-nums text-emerald-950">
+      <p className={`mt-1 font-mono text-3xl font-bold tabular-nums ${valueColor}`}>
         {formatElapsed(elapsed)}
       </p>
     </div>
@@ -133,7 +183,6 @@ export function WorkoutSessionPage() {
   );
   const beginRequested = useRef(false);
 
-  // Auto-begin when opening a PENDING session (timer starts with Start Training).
   useEffect(() => {
     if (!sessionId || !detail.data) return;
     if (detail.data.status !== "PENDING") return;
@@ -149,7 +198,7 @@ export function WorkoutSessionPage() {
 
   if (!sessionId) {
     return (
-      <PageShell title="Session">
+      <PageShell embedded title="Session">
         <p className="text-stone-600">Missing session id.</p>
       </PageShell>
     );
@@ -160,15 +209,15 @@ export function WorkoutSessionPage() {
     (detail.data?.status === "PENDING" && begin.isPending)
   ) {
     return (
-      <PageShell title="Session">
-        <Spinner label="Starting workout…" />
+      <PageShell embedded title="Session">
+        <Spinner label="Starting session…" />
       </PageShell>
     );
   }
 
   if (detail.isError || !detail.data) {
     return (
-      <PageShell title="Session">
+      <PageShell embedded title="Session">
         <p className="text-red-600">
           {detail.error instanceof ApiError
             ? detail.error.message
@@ -176,7 +225,7 @@ export function WorkoutSessionPage() {
         </p>
         <Link
           to="/home"
-          className="mt-4 inline-block text-sm font-medium text-emerald-800"
+          className="mt-4 inline-block text-sm font-medium text-emerald-900"
         >
           Back to home
         </Link>
@@ -185,6 +234,7 @@ export function WorkoutSessionPage() {
   }
 
   const session = detail.data;
+  const isStretch = session.workoutKind === "STRETCH";
   const readOnly =
     session.status === "COMPLETED" || session.status === "ABANDONED";
   const doneCount = session.exercises.filter(
@@ -192,67 +242,112 @@ export function WorkoutSessionPage() {
   ).length;
   const totalCount = session.exercises.length;
   const allDone = totalCount > 0 && doneCount === totalCount;
+  const dayLabel =
+    session.planDayNumber != null && session.planDurationDays != null
+      ? ` · Day ${session.planDayNumber} of ${session.planDurationDays}`
+      : "";
 
   return (
     <PageShell
+      embedded
       title={session.workoutTitle}
-      subtitle={`Focus: ${session.focusNodeName}`}
-      actions={
-        <Link
-          to="/home"
-          className="rounded-lg px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100"
-        >
-          Home
-        </Link>
+      subtitle={
+        isStretch
+          ? `Morning stretch${dayLabel}`
+          : `Focus: ${session.focusNodeName}${dayLabel}`
       }
     >
       <div className="space-y-4">
+        {isStretch ? (
+          <div className="rounded-2xl border border-sky-200 bg-sky-50/90 px-4 py-3 text-sm text-sky-950">
+            Mobility routine — separate from skill workouts.{" "}
+            <Link to="/stretch" className="font-semibold underline">
+              Open Stretch hub
+            </Link>
+          </div>
+        ) : null}
+
+        {!isStretch && session.awaitingVerify ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            Plan complete for this skill.{" "}
+            <Link to="/assessment" className="font-semibold underline">
+              Verify on Assessment
+            </Link>{" "}
+            to unlock the next node.
+          </div>
+        ) : null}
+
         <SessionTimer
           startedAt={session.startedAt}
           completedAt={session.completedAt}
           running={!readOnly && Boolean(session.startedAt)}
+          accent={isStretch ? "sky" : "emerald"}
         />
 
-        {session.workoutDescription ? (
-          <p className="text-sm text-stone-600">{session.workoutDescription}</p>
-        ) : null}
-
         <p className="text-sm font-medium text-stone-700">
-          Progress: {doneCount}/{totalCount} exercises done
+          {doneCount}/{totalCount} done
         </p>
 
         <ul className="space-y-3">
           {session.exercises.map((line) => {
             const done = line.attempt?.status === "COMPLETED";
+            const role = roleFromNotes(line.notes);
+            const steps = howToSteps(line.exerciseDescription);
+
             return (
               <li
                 key={line.workoutExerciseId}
                 className={
                   done
-                    ? "rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4"
-                    : "rounded-2xl border border-stone-200 bg-white/90 p-4"
+                    ? isStretch
+                      ? "rounded-2xl border border-sky-300 bg-sky-100/70 p-4"
+                      : "rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4"
+                    : "rounded-2xl border border-stone-200 bg-stone-50/90 p-4"
                 }
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                      Exercise {line.sequence}
-                    </p>
-                    <h3 className="mt-1 text-base font-bold text-stone-900">
-                      {line.exerciseName}
-                    </h3>
-                    <p className="mt-1 text-sm text-stone-600">
-                      {targetInstruction(line)}
-                    </p>
-                    {line.notes ? (
-                      <p className="mt-1 text-sm text-stone-500">
-                        {line.notes}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p
+                        className={
+                          isStretch
+                            ? "text-xs font-semibold uppercase tracking-wide text-sky-800"
+                            : "text-xs font-semibold uppercase tracking-wide text-stone-500"
+                        }
+                      >
+                        {line.sequence}. {line.exerciseName}
                       </p>
+                      {role ? (
+                        <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-600">
+                          {role}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <DoseChips line={line} />
+
+                    {steps.length > 0 ? (
+                      <ol className="mt-2 space-y-0.5 text-sm text-stone-600">
+                        {steps.map((step, i) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="w-4 shrink-0 tabular-nums text-stone-400">
+                              {i + 1}.
+                            </span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
                     ) : null}
                   </div>
 
                   {done ? (
-                    <span className="shrink-0 rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white">
+                    <span
+                      className={
+                        isStretch
+                          ? "shrink-0 rounded-full bg-sky-700 px-3 py-1 text-xs font-semibold text-white"
+                          : "shrink-0 rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white"
+                      }
+                    >
                       Done
                     </span>
                   ) : readOnly ? (
@@ -261,7 +356,11 @@ export function WorkoutSessionPage() {
                     </span>
                   ) : (
                     <Button
-                      className="shrink-0"
+                      className={
+                        isStretch
+                          ? "shrink-0 bg-sky-700! hover:bg-sky-800!"
+                          : "shrink-0"
+                      }
                       loading={
                         markDone.isPending &&
                         markDone.variables === line.workoutExerciseId
@@ -279,12 +378,12 @@ export function WorkoutSessionPage() {
                         }
                       }}
                     >
-                      Mark completed
+                      Done
                     </Button>
                   )}
                 </div>
 
-                <ExerciseMedia line={line} />
+                <FormGuide line={line} />
               </li>
             );
           })}
@@ -292,14 +391,29 @@ export function WorkoutSessionPage() {
 
         {!readOnly ? (
           <Button
-            className="w-full"
+            className={
+              isStretch ? "w-full bg-sky-700! hover:bg-sky-800!" : "w-full"
+            }
             loading={complete.isPending}
             disabled={!allDone}
             onClick={async () => {
               try {
                 const next = await complete.mutateAsync();
+                if (isStretch) {
+                  toast.success("Stretching complete — nice start to the day");
+                  navigate("/stretch", { replace: true });
+                  return;
+                }
                 if (next.status === "PENDING") {
-                  toast.success(`Next up: ${next.workoutTitle}`);
+                  const day =
+                    next.planDayNumber != null && next.planDurationDays != null
+                      ? ` (Day ${next.planDayNumber} of ${next.planDurationDays})`
+                      : "";
+                  toast.success(`Next up: ${next.workoutTitle}${day}`);
+                } else if (next.awaitingVerify) {
+                  toast.success(
+                    "Plan complete — verify this skill to unlock the next node",
+                  );
                 } else {
                   toast.success(
                     "Path complete — no more workouts for this goal",
@@ -315,21 +429,44 @@ export function WorkoutSessionPage() {
               }
             }}
           >
-            Finish session
+            {isStretch ? "Finish stretching" : "Finish session"}
           </Button>
+        ) : isStretch ? (
+          <section className="rounded-2xl border border-sky-200 bg-sky-50/80 p-5">
+            <p className="text-sm font-medium text-sky-950">
+              Stretch day completed. No skill verification needed.
+            </p>
+            <Button
+              variant="secondary"
+              className="mt-4 w-full sm:w-auto"
+              onClick={() => navigate("/stretch")}
+            >
+              Back to Stretch
+            </Button>
+          </section>
         ) : (
           <section className="rounded-2xl border border-amber-200 bg-amber-50/80 p-5">
             <p className="text-sm font-medium text-amber-950">
               Session completed
-              {session.verified ? " and verified" : ", not verified yet"}. Video
-              verification comes next.
+              {session.verified ? " and verified" : ", not verified yet"}.
             </p>
+            <p className="mt-2 text-sm text-amber-900/80">
+              Prove the skill on your path with a short video — not every session
+              needs a separate check.
+            </p>
+            <Button
+              variant="primary"
+              className="mt-4 w-full sm:w-auto"
+              onClick={() => navigate("/assessment")}
+            >
+              Verify skills
+            </Button>
           </section>
         )}
 
         {!readOnly && !allDone ? (
           <p className="text-center text-xs text-stone-500">
-            Mark every exercise completed to unlock Finish session.
+            Mark every {isStretch ? "stretch" : "exercise"} done to finish.
           </p>
         ) : null}
       </div>

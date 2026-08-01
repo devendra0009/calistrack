@@ -5,6 +5,7 @@ import {
   useAdminExercises,
   useAdminNodes,
   useAdminPathQuestions,
+  useAdminWorkoutPlans,
   useAdminWorkouts,
 } from '@/features/admin/api'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -13,6 +14,7 @@ export function AdminHomePage() {
   const exercises = useAdminExercises()
   const nodes = useAdminNodes()
   const workouts = useAdminWorkouts()
+  const plans = useAdminWorkoutPlans()
   const edges = useAdminEdges()
   const pathQuestions = useAdminPathQuestions()
 
@@ -20,6 +22,7 @@ export function AdminHomePage() {
     exercises.isLoading ||
     nodes.isLoading ||
     workouts.isLoading ||
+    plans.isLoading ||
     edges.isLoading ||
     pathQuestions.isLoading
 
@@ -28,6 +31,8 @@ export function AdminHomePage() {
   const activeNodes = nodes.data?.filter((n) => n.status === 'ACTIVE').length ?? 0
   const activeWorkouts =
     workouts.data?.filter((w) => w.status === 'ACTIVE').length ?? 0
+  const activePlans =
+    plans.data?.filter((p) => p.status === 'ACTIVE').length ?? 0
   const edgeCount = edges.data?.length ?? 0
   const questionCount = pathQuestions.data?.length ?? 0
 
@@ -38,19 +43,20 @@ export function AdminHomePage() {
           Catalog builder
         </h1>
         <p className="mt-2 max-w-2xl text-stone-600">
-          Build the path users train on: exercises → goals → workouts → edges →
-          placement questions. For now each goal gets one workout; edges define
-          skill order; questions decide starting placement.
+          Build the path users train on: exercises → goals → workouts → multi-day
+          plans → edges → placement questions. Day complete unlocks the next day;
+          plan complete + skill verify unlocks the next node.
         </p>
       </div>
 
       {loading ? (
         <Spinner label="Loading catalog…" />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Stat label="Exercises" value={activeExercises} />
           <Stat label="Goals / nodes" value={activeNodes} />
           <Stat label="Workouts" value={activeWorkouts} />
+          <Stat label="Plans" value={activePlans} />
           <Stat label="Path edges" value={edgeCount} />
           <Stat label="Questions" value={questionCount} />
         </div>
@@ -61,7 +67,7 @@ export function AdminHomePage() {
           <li key={s.to}>
             <Link
               to={s.to}
-              className="flex gap-4 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm transition hover:border-emerald-300"
+              className="flex gap-4 rounded-2xl border border-stone-200 bg-stone-50/90 p-5 shadow-sm transition hover:border-emerald-300"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-900">
                 {s.step}
@@ -80,7 +86,7 @@ export function AdminHomePage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white/90 p-4 shadow-sm">
+    <div className="rounded-2xl border border-stone-200 bg-stone-50/90 p-4 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
         {label}
       </p>

@@ -81,7 +81,7 @@ export function RegisterPage() {
       title="Start your path"
       subtitle="Create an account to set a goal and get your first workout session."
     >
-      <form action={formAction} className="max-w-md space-y-4 rounded-2xl border border-stone-200 bg-white/90 p-6 shadow-sm">
+      <form action={formAction} className="max-w-md space-y-4 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm">
         <div className="flex flex-col items-center gap-3 pb-2">
           <label
             htmlFor={fileInputId}
@@ -94,7 +94,7 @@ export function RegisterPage() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="px-3 text-center text-xs font-medium text-stone-500 group-hover:text-emerald-800">
+              <span className="px-3 text-center text-xs font-medium text-stone-500 group-hover:text-emerald-900">
                 Add photo
               </span>
             )}
@@ -110,7 +110,7 @@ export function RegisterPage() {
           <div className="flex items-center gap-3 text-sm">
             <button
               type="button"
-              className="font-semibold text-emerald-800 hover:underline"
+              className="font-semibold text-emerald-900 hover:underline"
               onClick={() => fileInputRef.current?.click()}
             >
               {avatarFile ? 'Change photo' : 'Upload profile photo'}
@@ -164,7 +164,7 @@ export function RegisterPage() {
         </Button>
         <p className="text-center text-sm text-stone-600">
           Already have an account?{' '}
-          <Link className="font-semibold text-emerald-800 hover:underline" to="/login">
+          <Link className="font-semibold text-emerald-900 hover:underline" to="/login">
             Sign in
           </Link>
         </p>

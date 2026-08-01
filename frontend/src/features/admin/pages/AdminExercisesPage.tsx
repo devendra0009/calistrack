@@ -128,7 +128,7 @@ export function AdminExercisesPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
             Step 1
           </p>
           <h1 className="text-2xl font-bold text-stone-900">Exercises</h1>
@@ -144,7 +144,7 @@ export function AdminExercisesPage() {
       {showForm ? (
         <form
           onSubmit={onSubmit}
-          className="space-y-3 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm"
+          className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/90 p-5 shadow-sm"
         >
           <h2 className="font-semibold text-stone-900">
             {editingId ? 'Edit exercise' : 'Create exercise'}
@@ -159,7 +159,7 @@ export function AdminExercisesPage() {
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-stone-800">Description</span>
             <textarea
-              className="min-h-20 rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 outline-none ring-emerald-600/30 focus:ring-2"
+              className="min-h-20 rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 text-stone-900 outline-none ring-emerald-600/30 focus:ring-2"
               value={form.description ?? ''}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
@@ -211,7 +211,7 @@ export function AdminExercisesPage() {
               <div className="flex flex-wrap gap-2">
                 <label
                   htmlFor={thumbInputId}
-                  className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 hover:bg-stone-50"
+                  className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm font-semibold text-stone-900 hover:bg-stone-50"
                 >
                   {uploadingThumb
                     ? 'Uploading…'
@@ -267,7 +267,7 @@ export function AdminExercisesPage() {
               <div className="flex flex-wrap gap-2">
                 <label
                   htmlFor={demoInputId}
-                  className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 hover:bg-stone-50"
+                  className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm font-semibold text-stone-900 hover:bg-stone-50"
                 >
                   {uploadingDemo
                     ? 'Uploading…'
@@ -325,7 +325,7 @@ export function AdminExercisesPage() {
           {(list.data ?? []).map((ex) => (
             <li
               key={ex.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/90 px-4 py-3 shadow-sm"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50/90 px-4 py-3 shadow-sm"
             >
               <div className="flex min-w-0 items-center gap-3">
                 {ex.thumbnailUrl ? (

@@ -46,7 +46,7 @@ export function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to continue your calisthenics path."
     >
-      <form action={formAction} className="max-w-md space-y-4 rounded-2xl border border-stone-200 bg-white/90 p-6 shadow-sm">
+      <form action={formAction} className="max-w-md space-y-4 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm">
         <Input
           label="Email"
           name="email"
@@ -73,7 +73,7 @@ export function LoginPage() {
         </Button>
         <p className="text-center text-sm text-stone-600">
           New here?{' '}
-          <Link className="font-semibold text-emerald-800 hover:underline" to="/register">
+          <Link className="font-semibold text-emerald-900 hover:underline" to="/register">
             Create an account
           </Link>
         </p>

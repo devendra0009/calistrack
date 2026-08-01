@@ -71,7 +71,7 @@ export function QuestionsPage() {
       subtitle="Answer honestly — this places you on the path and creates your first session."
     >
       <form
-        className="space-y-5 rounded-2xl border border-stone-200 bg-white/90 p-6 shadow-sm"
+        className="space-y-5 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm"
         onSubmit={form.handleSubmit(async (values) => {
           const answers: OnboardingAnswerDto[] = qList.map((q) => {
             const raw = values[q.nodeId]

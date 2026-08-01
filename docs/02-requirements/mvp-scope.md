@@ -15,7 +15,7 @@
 | MVP-05 | Train loop: PENDING → IN_PROGRESS + exercise_attempts → COMPLETED unverified |
 | MVP-06 | Home shows current session (PENDING / IN_PROGRESS / needs verify) |
 | MVP-07 | Post-workout video assessment on `workout.goal_node_id`; manual verify |
-| MVP-08 | On PASS: `session.verified=true`, unlock, create next PENDING session |
+| MVP-08 | On plan complete + PASS: verify node, unlock next node’s Day 1 PENDING |
 | MVP-09 | Progress dashboard + skill explorer |
 | MVP-10 | Workout history (include verified flag) |
 
@@ -47,7 +47,7 @@
 
 - Onboarding questions = placement only (no video).
 - `workout_session` created as **PENDING** when next workout is assigned.
-- Completing exercises → session **COMPLETED** but `verified=false`.
-- Next workout only after **PASSED** assessment on that workout’s `goal_node_id` (video required) → `session.verified=true`.
+- Completing exercises → session **COMPLETED** but `verified=false`; unlocks **next plan day** (or `AWAITING_VERIFY` on last day).
+- Next **node** only after **PASSED** assessment when the plan is complete → `user_node.verified=true`, next node Day 1 PENDING.
 - Exercise attempts created when a line **starts** (`IN_PROGRESS` → `COMPLETED`).
 - Graph: `from_node` = prerequisite, `to_node` = next skill.

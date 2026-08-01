@@ -219,7 +219,7 @@ function PathView({
           return (
             <li
               key={goal.id}
-              className="rounded-2xl border border-stone-200 bg-white/90 px-4 py-4 shadow-sm"
+              className="rounded-2xl border border-stone-200 bg-stone-50/90 px-4 py-4 shadow-sm"
             >
               {chain ? (
                 <PathChain names={chain} />
@@ -264,7 +264,7 @@ export function AdminPathPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
           Step 4
         </p>
         <h1 className="text-2xl font-bold text-stone-900">Path sequence</h1>
@@ -288,7 +288,7 @@ export function AdminPathPage() {
           className={cn(
             'rounded-lg px-4 py-2 text-sm font-semibold transition',
             view === 'edges'
-              ? 'bg-white text-stone-900 shadow-sm'
+              ? 'bg-stone-50 text-stone-900 shadow-sm'
               : 'text-stone-600 hover:text-stone-900',
           )}
           onClick={() => setView('edges')}
@@ -302,7 +302,7 @@ export function AdminPathPage() {
           className={cn(
             'rounded-lg px-4 py-2 text-sm font-semibold transition',
             view === 'paths'
-              ? 'bg-white text-stone-900 shadow-sm'
+              ? 'bg-stone-50 text-stone-900 shadow-sm'
               : 'text-stone-600 hover:text-stone-900',
           )}
           onClick={() => setView('paths')}
@@ -320,7 +320,7 @@ export function AdminPathPage() {
       {view === 'edges' ? (
         <>
           <form
-            className="space-y-3 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm"
+            className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/90 p-5 shadow-sm"
             onSubmit={async (e) => {
               e.preventDefault()
               if (!fromNodeId || !toNodeId) {
@@ -372,7 +372,7 @@ export function AdminPathPage() {
               {(edges.data ?? []).map((edge) => (
                 <li
                   key={edge.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/90 px-4 py-3 shadow-sm"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50/90 px-4 py-3 shadow-sm"
                 >
                   <p className="text-sm text-stone-800">
                     <span className="font-semibold">{edge.fromNode.name}</span>

@@ -9,6 +9,7 @@ import { useAuthSession } from '@/features/auth/AuthSessionProvider'
 import { ApiError } from '@/shared/api/errors'
 
 export const currentSessionQueryKey = ['workout-sessions', 'current'] as const
+export const workoutSessionsQueryKey = ['workout-sessions', 'list'] as const
 
 export function sessionDetailQueryKey(sessionId: string) {
   return ['workout-sessions', sessionId] as const
@@ -26,6 +27,23 @@ export function useCurrentWorkoutSession(enabled = true) {
   return useQuery({
     queryKey: currentSessionQueryKey,
     queryFn: fetchCurrentWorkoutSession,
+    enabled: enabled && isReady && isAuthenticated,
+    retry: false,
+  })
+}
+
+export function fetchWorkoutSessions() {
+  return api.get<CurrentWorkoutSessionResponse[]>(
+    '/api/v1/workout-sessions',
+  )
+}
+
+export function useWorkoutSessions(enabled = true) {
+  const { isAuthenticated, isReady } = useAuthSession()
+
+  return useQuery({
+    queryKey: workoutSessionsQueryKey,
+    queryFn: fetchWorkoutSessions,
     enabled: enabled && isReady && isAuthenticated,
     retry: false,
   })
@@ -76,6 +94,8 @@ export function useSessionTrainMutations(sessionId: string) {
     await Promise.all([
       qc.invalidateQueries({ queryKey: sessionDetailQueryKey(sessionId) }),
       qc.invalidateQueries({ queryKey: currentSessionQueryKey }),
+      qc.invalidateQueries({ queryKey: workoutSessionsQueryKey }),
+      qc.invalidateQueries({ queryKey: ['stretching', 'today'] }),
     ])
   }
 

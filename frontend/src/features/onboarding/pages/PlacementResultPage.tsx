@@ -34,7 +34,7 @@ export function PlacementResultPage() {
       title="You're placed"
       subtitle="Your first workout session is ready as PENDING."
     >
-      <div className="space-y-4 rounded-2xl border border-stone-200 bg-white/90 p-6 shadow-sm">
+      <div className="space-y-4 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm">
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-stone-500">Focus node</dt>
@@ -50,7 +50,7 @@ export function PlacementResultPage() {
           </div>
           <div>
             <dt className="text-stone-500">Status</dt>
-            <dd className="font-semibold text-emerald-800">{result.sessionStatus}</dd>
+            <dd className="font-semibold text-emerald-900">{result.sessionStatus}</dd>
           </div>
         </dl>
 

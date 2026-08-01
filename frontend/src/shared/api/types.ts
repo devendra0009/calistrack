@@ -32,7 +32,9 @@ export interface MeResponse {
   displayName: string
   heightCm: number | null
   weightKg: number | null
+  /** Computed from dateOfBirth when present; otherwise legacy stored age. */
   age: number | null
+  dateOfBirth: string | null
   gender: Gender | null
   experience: ExperienceLevel | null
   avatarUrl: string | null
@@ -46,7 +48,7 @@ export interface PatchMeRequest {
   displayName?: string
   heightCm?: number
   weightKg?: number
-  age?: number
+  dateOfBirth?: string
   gender?: Gender
   experience?: ExperienceLevel
   avatarUrl?: string
@@ -93,15 +95,68 @@ export interface OnboardingStatusResponse {
   completed: boolean
 }
 
+export type AssessmentStatus =
+  | 'NOT_ATTEMPTED'
+  | 'PENDING_REVIEW'
+  | 'PENDING_AI'
+  | 'PASSED'
+  | 'FAILED'
+
+export interface PathAssessmentNodeResponse {
+  nodeId: string
+  name: string
+  description: string | null
+  difficulty: string | null
+  stepIndex: number
+  goal: boolean
+  status: UserNodeStatus
+  verified: boolean
+  awaitingVerify: boolean
+  videoUrl: string | null
+}
+
+export interface GoalPathAssessmentResponse {
+  goalNodeId: string
+  goalNodeName: string
+  verifiedCount: number
+  totalCount: number
+  nodes: PathAssessmentNodeResponse[]
+}
+
+export interface SubmitAssessmentRequest {
+  nodeId: string
+  videoUrl: string
+  workoutSessionId?: string
+}
+
+export interface AssessmentResponse {
+  id: string
+  nodeId: string
+  nodeName: string
+  status: AssessmentStatus
+  verified: boolean
+  videoUrl: string | null
+  performedAt: string
+}
+
+export type WorkoutKind = 'SKILL' | 'STRETCH'
+export type UserPlanEnrollmentStatus = 'ACTIVE' | 'AWAITING_VERIFY' | 'COMPLETED'
+
 export interface CurrentWorkoutSessionResponse {
   sessionId: string
   workoutId: string
   workoutTitle: string
   workoutDescription: string | null
+  workoutKind: WorkoutKind
   focusNodeId: string
   focusNodeName: string
   status: WorkoutSessionStatus
   verified: boolean
+  planEnrollmentId: string | null
+  planDayNumber: number | null
+  planDurationDays: number | null
+  enrollmentStatus: UserPlanEnrollmentStatus | null
+  awaitingVerify: boolean
   createdAt: string
   updatedAt: string
 }
@@ -123,6 +178,7 @@ export interface SessionExerciseLineDto {
   sequence: number
   exerciseId: string
   exerciseName: string
+  exerciseDescription: string | null
   exerciseMetricType: string
   thumbnailUrl: string | null
   demoVideoUrl: string | null
@@ -139,10 +195,16 @@ export interface WorkoutSessionDetailResponse {
   workoutId: string
   workoutTitle: string
   workoutDescription: string | null
+  workoutKind: WorkoutKind
   focusNodeId: string
   focusNodeName: string
   status: WorkoutSessionStatus
   verified: boolean
+  planEnrollmentId: string | null
+  planDayNumber: number | null
+  planDurationDays: number | null
+  enrollmentStatus: UserPlanEnrollmentStatus | null
+  awaitingVerify: boolean
   startedAt: string | null
   completedAt: string | null
   exercises: SessionExerciseLineDto[]
@@ -158,6 +220,35 @@ export interface ExerciseAttemptResponse {
   actualHoldSeconds: number | null
   actualRestSeconds: number | null
   notes: string | null
+}
+
+export interface StretchExerciseLineDto {
+  workoutExerciseId: string
+  sequence: number
+  exerciseId: string
+  exerciseName: string
+  exerciseDescription: string | null
+  exerciseMetricType: string
+  thumbnailUrl: string | null
+  demoVideoUrl: string | null
+  targetSets: number | null
+  targetReps: number | null
+  targetHoldSeconds: number | null
+  targetRestSeconds: number | null
+  notes: string | null
+}
+
+export interface StretchingTodayResponse {
+  planCode: string
+  planTitle: string
+  dayNumber: number
+  durationDays: number
+  workoutId: string
+  workoutTitle: string
+  workoutDescription: string | null
+  sessionId: string | null
+  sessionStatus: WorkoutSessionStatus | null
+  exercises: StretchExerciseLineDto[]
 }
 
 export interface PatchExerciseAttemptRequest {
@@ -281,6 +372,7 @@ export interface AdminWorkoutSummaryResponse {
   title: string
   description: string | null
   goalNode: NamedRef
+  kind: WorkoutKind
   difficulty: string
   createdByUserId: string | null
   status: string
@@ -294,6 +386,7 @@ export interface AdminWorkoutResponse {
   title: string
   description: string | null
   goalNode: NamedRef
+  kind: WorkoutKind
   difficulty: string
   createdByUserId: string | null
   status: string
@@ -306,9 +399,61 @@ export interface AdminWorkoutRequest {
   title: string
   description?: string | null
   goalNodeId: string
+  kind?: WorkoutKind
   difficulty: string
   status?: string
   exercises?: AdminWorkoutExerciseRequest[] | null
+}
+
+export interface AdminWorkoutPlanDayResponse {
+  id: string
+  dayNumber: number
+  workout: NamedRef
+}
+
+export interface AdminWorkoutPlanDayRequest {
+  dayNumber: number
+  workoutId: string
+}
+
+export type WorkoutPlanKind = 'SKILL' | 'DAILY_ROUTINE'
+
+export interface AdminWorkoutPlanSummaryResponse {
+  id: string
+  title: string
+  node: NamedRef
+  kind: WorkoutPlanKind
+  code: string | null
+  durationDays: number
+  dayCount: number
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminWorkoutPlanResponse {
+  id: string
+  title: string
+  description: string | null
+  node: NamedRef
+  kind: WorkoutPlanKind
+  code: string | null
+  durationDays: number
+  status: string
+  days: AdminWorkoutPlanDayResponse[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminWorkoutPlanRequest {
+  title: string
+  description?: string | null
+  nodeId: string
+  kind?: WorkoutPlanKind
+  code?: string | null
+  durationDays: number
+  status?: string
+  days?: AdminWorkoutPlanDayRequest[] | null
 }
 
 export type PlacementAnswerType = 'REPS' | 'YES_NO'
@@ -329,4 +474,12 @@ export interface AdminPathQuestionRequest {
   prompt: string
   answerType: PlacementAnswerType
   sortOrder: number
+}
+
+export interface ChatRequest {
+  message: string
+}
+
+export interface ChatResponse {
+  response: string
 }

@@ -89,6 +89,23 @@ export async function uploadExerciseThumbnail(file: File): Promise<string> {
   return mediaPublicUrl(media)
 }
 
+/** Upload an assessment proof video; returns the public URL to store on the assessment. */
+export async function uploadAssessmentVideo(file: File): Promise<string> {
+  if (!VIDEO_MIME_TYPES.has(file.type)) {
+    throw new ApiError(400, 'Assessment video must be MP4, WebM, or MOV')
+  }
+  if (file.size > MAX_EXERCISE_VIDEO_BYTES) {
+    throw new ApiError(400, 'Assessment video must be 50 MB or smaller')
+  }
+
+  const media = await uploadMediaFile(file, {
+    mediaType: 'ASSESSMENT_VIDEO',
+    resourceType: 'VIDEO',
+    visibility: 'PUBLIC',
+  })
+  return mediaPublicUrl(media)
+}
+
 /** Upload an exercise demo video (or image); returns the public URL to store on the exercise. */
 export async function uploadExerciseDemo(file: File): Promise<string> {
   const isVideo = VIDEO_MIME_TYPES.has(file.type)
@@ -151,28 +168,127 @@ async function transferToProvider(
     })
 
     if (!res.ok) {
-      throw new ApiError(res.status, `Direct upload failed (${res.status})`)
+      throw new ApiError(
+        res.status,
+        await readProviderError(res, `Direct upload failed (${res.status})`),
+      )
     }
     return
   }
 
-  // Cloudinary-style signed form POST (multipart to the provider, never to our API)
+  // Cloudinary signed form POST — chunk videos / large files (Windows camera clips fail as one shot)
+  const shouldChunk =
+    authorization.provider === 'CLOUDINARY' &&
+    (file.size > CLOUDINARY_CHUNK_THRESHOLD || file.type.startsWith('video/'))
+
+  if (shouldChunk) {
+    await uploadCloudinaryChunked(authorization, file)
+    return
+  }
+
   const form = new FormData()
   for (const [key, value] of Object.entries(authorization.formFields ?? {})) {
-    form.append(key, value)
+    if (value != null && value !== '') {
+      form.append(key, value)
+    }
   }
-  form.append('file', file)
+  form.append('file', file, file.name)
 
-  const res = await fetch(authorization.uploadUrl, {
-    method: 'POST',
-    body: form,
-  })
+  let res: Response
+  try {
+    res = await fetch(authorization.uploadUrl, {
+      method: 'POST',
+      body: form,
+    })
+  } catch (err) {
+    throw new ApiError(
+      0,
+      err instanceof Error
+        ? `Upload network error: ${err.message}`
+        : 'Upload network error — check connection / Brave shields',
+    )
+  }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
     throw new ApiError(
       res.status,
-      text || `Direct upload failed (${res.status})`,
+      await readProviderError(res, `Direct upload failed (${res.status})`),
     )
+  }
+}
+
+/** Cloudinary requires chunks ≥ 5MB (except the last). Use 6MB. */
+const CLOUDINARY_CHUNK_SIZE = 6 * 1024 * 1024
+/** Chunk videos / large files — single POSTs often fail on Windows camera recordings. */
+const CLOUDINARY_CHUNK_THRESHOLD = 5 * 1024 * 1024
+
+async function uploadCloudinaryChunked(
+  authorization: UploadRequestResponse,
+  file: File,
+): Promise<void> {
+  const uploadId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  let start = 0
+  while (start < file.size) {
+    const end = Math.min(start + CLOUDINARY_CHUNK_SIZE, file.size)
+    const blob = file.slice(start, end)
+    const form = new FormData()
+    for (const [key, value] of Object.entries(authorization.formFields ?? {})) {
+      if (value != null && value !== '') {
+        form.append(key, value)
+      }
+    }
+    form.append('file', blob, file.name)
+
+    let res: Response
+    try {
+      res = await fetch(authorization.uploadUrl, {
+        method: 'POST',
+        headers: {
+          'X-Unique-Upload-Id': uploadId,
+          'Content-Range': `bytes ${start}-${end - 1}/${file.size}`,
+        },
+        body: form,
+      })
+    } catch (err) {
+      throw new ApiError(
+        0,
+        err instanceof Error
+          ? `Chunked upload network error: ${err.message}`
+          : 'Chunked upload network error',
+      )
+    }
+
+    if (!res.ok) {
+      throw new ApiError(
+        res.status,
+        await readProviderError(
+          res,
+          `Chunked upload failed at bytes ${start}-${end - 1} (${res.status})`,
+        ),
+      )
+    }
+
+    start = end
+  }
+}
+
+async function readProviderError(
+  res: Response,
+  fallback: string,
+): Promise<string> {
+  const text = await res.text().catch(() => '')
+  if (!text) return fallback
+  try {
+    const json = JSON.parse(text) as {
+      error?: { message?: string }
+      message?: string
+    }
+    return json.error?.message || json.message || text || fallback
+  } catch {
+    return text.length > 280 ? `${text.slice(0, 280)}…` : text
   }
 }

@@ -1,5 +1,70 @@
 @import 'tailwindcss';
 
+/*
+ * Night-friendly dark palette (warm stone, muted emerald, no pure black/white).
+ * Remaps Tailwind color tokens under .dark so existing utilities adapt.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --app-bg: radial-gradient(ellipse at top, #ecfdf5 0%, #fafaf9 45%, #f5f5f4 100%);
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+  /* Soft charcoal page wash — slight green tint at top, never pure black */
+  --app-bg: radial-gradient(ellipse at top, #15201c 0%, #12100e 42%, #0e0c0a 100%);
+
+  /* Stone: inverted warm neutrals, soft contrast for dark rooms */
+  --color-stone-50: #1a1714;
+  --color-stone-100: #221f1b;
+  --color-stone-200: #3a3530;
+  --color-stone-300: #4f4841;
+  --color-stone-400: #78716c;
+  --color-stone-500: #a39e97;
+  --color-stone-600: #c4bfb8;
+  --color-stone-700: #d6d3d1;
+  --color-stone-800: #e7e5e4;
+  --color-stone-900: #f0eeeb;
+  --color-stone-950: #fafaf9;
+
+  /* Emerald: muted, low-glare accents (not neon) */
+  --color-emerald-50: #14201c;
+  --color-emerald-100: #1a2c25;
+  --color-emerald-200: #243a32;
+  --color-emerald-300: #2f5344;
+  --color-emerald-400: #3d6b55;
+  --color-emerald-500: #4a8066;
+  --color-emerald-600: #3f735c;
+  --color-emerald-700: #3a6854;
+  --color-emerald-800: #325a49;
+  --color-emerald-900: #9ecbb4;
+  --color-emerald-950: #c2e0d1;
+
+  /* Sky — morning stretch accents */
+  --color-sky-50: #152028;
+  --color-sky-100: #1a2834;
+  --color-sky-200: #2a3f4f;
+  --color-sky-300: #3a5568;
+  --color-sky-700: #5a8fad;
+  --color-sky-800: #8eb8d0;
+  --color-sky-900: #b7d4e6;
+  --color-sky-950: #d6e8f2;
+
+  /* Amber callouts — dimmed for night */
+  --color-amber-50: #2a2114;
+  --color-amber-100: #3a2e1a;
+  --color-amber-200: #5c4a28;
+  --color-amber-300: #7a6334;
+  --color-amber-800: #e8c98a;
+  --color-amber-900: #f0d9a8;
+
+  /* Errors — slightly softened */
+  --color-red-500: #d9786c;
+  --color-red-600: #c96559;
+}
+
 html,
 body,
 #root {
@@ -14,7 +79,22 @@ body {
     system-ui,
     -apple-system,
     sans-serif;
-  color: #1c1917;
-  background: #fafaf9;
+  color: var(--color-stone-900, #1c1917);
+  background: var(--color-stone-50, #fafaf9);
   -webkit-font-smoothing: antialiased;
+}
+
+.bg-app {
+  background-image: var(--app-bg);
+  background-color: var(--color-stone-50, #fafaf9);
+}
+
+button:not(:disabled),
+a,
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }

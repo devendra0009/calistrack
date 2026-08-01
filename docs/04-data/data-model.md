@@ -39,7 +39,7 @@ Directed edge: **from_node = prerequisite**, **to_node = next skill** (bottom-up
 
 ### Workout
 
-Template aimed at a goal Node (e.g. “Chest To Bar Prep”).
+Template aimed at a goal Node (e.g. “Chest To Bar Prep”). `kind` is `SKILL` (path training) or `STRETCH` (daily routine).
 
 ### WorkoutExercise
 
@@ -51,7 +51,17 @@ Per-user state on a Node: locked / available / in progress / completed, progress
 
 ### WorkoutSession
 
-One assigned run of a Workout for a User. Created as `PENDING` when the system picks the next workout (after goal Q&A or after prior node verified). Moves to `IN_PROGRESS` when training starts, `COMPLETED` when all exercises are done. Stays **unverified** until a PASSED assessment on the workout’s goal node — only then unlock next `PENDING` session.
+One assigned run of a Workout for a User (usually Day N of a node’s curated plan). Created as `PENDING` after onboarding Day 1 or after the prior plan day completes. Moves to `IN_PROGRESS` when training starts, `COMPLETED` when all exercises are done. Completing a day unlocks Day N+1; finishing the last day awaits node assessment before the next node’s Day 1.
+
+Stretch sessions use the same table with `workout.kind = STRETCH`, no plan enrollment, and no assessment.
+
+### WorkoutPlan / WorkoutPlanDay
+
+Curated multi-day template for a skill node (`kind = SKILL`) or a daily routine (`kind = DAILY_ROUTINE`, e.g. `code = morning_stretch`). Days point at shared catalog workouts (never cloned per user).
+
+### UserPlanEnrollment
+
+Per-user run of a plan: `ACTIVE` while training days, `AWAITING_VERIFY` after last day, `COMPLETED` after node PASS.
 
 ### ExerciseAttempt
 
@@ -59,7 +69,7 @@ Created when the user **starts** a line in the session (`IN_PROGRESS`), then `CO
 
 ### Assessment
 
-Video proof for a Node (usually the completed session’s `workout.goal_node_id`). Links optionally to `workout_session_id`. Onboarding placement Q&A does **not** create assessments.
+Video proof for a Node. When the node’s enrollment is `AWAITING_VERIFY`, PASS unlocks the next path node’s plan Day 1. Onboarding placement Q&A does **not** create assessments.
 
 ## Relationships
 
@@ -77,7 +87,13 @@ erDiagram
   Workout ||--o| Node : goal_skill
   Workout ||--o{ WorkoutExercise : contains
   Exercise ||--o{ WorkoutExercise : used_in
+  Node ||--o{ WorkoutPlan : has_plan
+  WorkoutPlan ||--o{ WorkoutPlanDay : days
+  WorkoutPlanDay }o--|| Workout : uses
+  User ||--o{ UserPlanEnrollment : enrolls
+  UserPlanEnrollment }o--|| WorkoutPlan : of
   WorkoutSession }o--|| Workout : based_on
+  WorkoutSession }o--o| UserPlanEnrollment : plan_day
   WorkoutSession ||--o{ ExerciseAttempt : has
   WorkoutExercise ||--o{ ExerciseAttempt : records
   WorkoutSession ||--o{ Assessment : may_verify

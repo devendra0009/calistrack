@@ -28,6 +28,8 @@ Example later: `exercise_category` table if you add many categories with icons.
 | `node.status` / `workout.status` / `exercise` difficulty sibling | `ACTIVE`, `COMING_SOON`, `DEPRECATED` |
 | `difficulty` | `BEGINNER`, `INTERMEDIATE`, `ADVANCED`, `ELITE` |
 | `category` (exercise only; not on node) | `PULL`, `PUSH`, `CORE`, `BALANCE`, `STATIC`, `MOBILITY`, `LEGS` |
+| `workout.kind` | `SKILL`, `STRETCH` |
+| `workout_plan.kind` | `SKILL`, `DAILY_ROUTINE` |
 | `metric_type` | `TIME`, `REPS`, `DISTANCE`, `ANGLE`, `WEIGHT` |
 | `operator` | `>=`, `<=`, `==`, `<`, `>` |
 | `relation_type` | `PREREQUISITE` |
@@ -43,11 +45,13 @@ Example later: `exercise_category` table if you add many categories with icons.
 
 | Status | Meaning |
 | --- | --- |
-| `PENDING` | Assigned after goal Q&A (or after prior node verified). User has not started exercises yet. |
+| `PENDING` | Assigned after goal Q&A (or after prior plan day / node verify). User has not started exercises yet. |
 | `IN_PROGRESS` | User started at least one exercise in this session. |
-| `COMPLETED` | All exercises done. **Not enough to unlock next** until `verified = true`. |
+| `COMPLETED` | All exercises done. Unlocks **next plan day** (or plan `AWAITING_VERIFY` on last day). |
 | `ABANDONED` | User quit / replaced. |
 
-`workout_session.verified` becomes `true` only after a **PASSED** assessment on that workout’s `goal_node_id` (video + manual review in V1). Then the system may create the **next** session as `PENDING`.
+`workout_session.verified` becomes `true` after a **PASSED** assessment on the node when the plan is complete. **Next node Day 1** is created on that PASS.
 
-Note: MVP assessment review uses `PENDING_REVIEW` + `verified` boolean. Keep `PENDING_AI` for V2 without a schema break.
+`user_plan_enrollment.status`: `ACTIVE` | `AWAITING_VERIFY` | `COMPLETED`.
+
+Note: MVP assessment uses self-verify PASS immediately. Keep `PENDING_AI` for V2 without a schema break.

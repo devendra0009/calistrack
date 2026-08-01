@@ -30,7 +30,13 @@ export const ADMIN_STEPS = [
     step: 3,
     to: '/admin/workouts',
     title: 'Workouts',
-    blurb: 'Attach one workout to a goal, then add exercise lines.',
+    blurb: 'Attach workouts to a skill node, then add exercise lines.',
+  },
+  {
+    step: '3b',
+    to: '/admin/workout-plans',
+    title: 'Workout plans',
+    blurb: 'Pick a node + day count, then build each day’s exercises (copy prior day to progress volume).',
   },
   {
     step: 4,
