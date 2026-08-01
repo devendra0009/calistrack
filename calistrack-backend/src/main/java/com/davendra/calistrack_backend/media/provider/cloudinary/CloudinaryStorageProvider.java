@@ -15,11 +15,7 @@ import com.davendra.calistrack_backend.media.provider.VerifyUploadCommand;
 import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -45,22 +41,21 @@ public class CloudinaryStorageProvider implements StorageProvider {
 		String folder = config.getFolder() + "/" + command.mediaType().name().toLowerCase();
 		String publicId = command.publicId();
 
+		// Only params that are sent in the form (except file/api_key) may be signed.
+		// Do NOT attach unsigned upload_preset here — it invalidates the signature.
 		Map<String, Object> paramsToSign = new TreeMap<>();
-		paramsToSign.put("public_id", publicId);
-		paramsToSign.put("timestamp", timestamp);
 		paramsToSign.put("folder", folder);
+		paramsToSign.put("public_id", publicId);
+		paramsToSign.put("timestamp", Long.toString(timestamp));
 
-		String signature = sign(paramsToSign, config.getApiSecret());
+		String signature = cloudinary.apiSignRequest(paramsToSign, config.getApiSecret());
 
 		Map<String, String> formFields = new LinkedHashMap<>();
 		formFields.put("api_key", config.getApiKey());
-		formFields.put("timestamp", String.valueOf(timestamp));
+		formFields.put("timestamp", Long.toString(timestamp));
 		formFields.put("signature", signature);
 		formFields.put("public_id", publicId);
 		formFields.put("folder", folder);
-		if (config.getUploadPreset() != null && !config.getUploadPreset().isBlank()) {
-			formFields.put("upload_preset", config.getUploadPreset());
-		}
 
 		String resourcePath = toCloudinaryResource(command.resourceType());
 		String uploadUrl = "https://api.cloudinary.com/v1_1/"
@@ -178,33 +173,6 @@ public class CloudinaryStorageProvider implements StorageProvider {
 				.resourceType(resourceType)
 				.secure(true)
 				.generate(ref.publicId());
-	}
-
-	private String sign(Map<String, Object> paramsToSign, String apiSecret) {
-		StringBuilder toSign = new StringBuilder();
-		boolean first = true;
-		for (Map.Entry<String, Object> entry : paramsToSign.entrySet()) {
-			if (entry.getValue() == null || String.valueOf(entry.getValue()).isBlank()) {
-				continue;
-			}
-			if (!first) {
-				toSign.append('&');
-			}
-			toSign.append(entry.getKey()).append('=').append(entry.getValue());
-			first = false;
-		}
-		toSign.append(apiSecret);
-		return sha1Hex(toSign.toString());
-	}
-
-	private static String sha1Hex(String input) {
-		try {
-			MessageDigest digest = MessageDigest.getInstance("SHA-1");
-			byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-			return HexFormat.of().formatHex(hash);
-		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException("SHA-1 not available", e);
-		}
 	}
 
 	private String resolveResourceType(VerifyUploadCommand command) {

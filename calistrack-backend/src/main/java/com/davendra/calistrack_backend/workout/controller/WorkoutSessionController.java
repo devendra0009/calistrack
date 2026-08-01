@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -25,6 +26,15 @@ public class WorkoutSessionController {
 
 	public WorkoutSessionController(WorkoutSessionService workoutSessionService) {
 		this.workoutSessionService = workoutSessionService;
+	}
+
+	@GetMapping
+	@Operation(
+			summary = "List workout sessions",
+			description = "Returns all sessions for the current user, newest first (includes verified flag)"
+	)
+	public List<CurrentWorkoutSessionResponse> listSessions() {
+		return workoutSessionService.listForCurrentUser();
 	}
 
 	@GetMapping("/current")

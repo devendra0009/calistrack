@@ -1,6 +1,7 @@
 package com.davendra.calistrack_backend.workout.entity;
 
 import com.davendra.calistrack_backend.catalog.entity.Workout;
+import com.davendra.calistrack_backend.progress.entity.UserPlanEnrollment;
 import com.davendra.calistrack_backend.user.entity.AppUser;
 import com.davendra.calistrack_backend.workout.enums.WorkoutSessionStatus;
 import jakarta.persistence.Column;
@@ -40,6 +41,13 @@ public class WorkoutSession {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "workout_id", nullable = false)
 	private Workout workout;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "plan_enrollment_id")
+	private UserPlanEnrollment planEnrollment;
+
+	@Column(name = "plan_day_number")
+	private Integer planDayNumber;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)

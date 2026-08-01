@@ -1,9 +1,7 @@
 package com.davendra.calistrack_backend.onboarding.service;
 
 import com.davendra.calistrack_backend.catalog.entity.Node;
-import com.davendra.calistrack_backend.catalog.entity.Workout;
 import com.davendra.calistrack_backend.catalog.repo.NodeRepository;
-import com.davendra.calistrack_backend.catalog.repo.WorkoutRepository;
 import com.davendra.calistrack_backend.common.exception.ApiException;
 import com.davendra.calistrack_backend.onboarding.dto.OnboardingAnswerDto;
 import com.davendra.calistrack_backend.onboarding.dto.OnboardingAnswersRequest;
@@ -15,9 +13,9 @@ import com.davendra.calistrack_backend.onboarding.enums.QuestionType;
 import com.davendra.calistrack_backend.path.dto.NodePlacement;
 import com.davendra.calistrack_backend.path.dto.PlacementAnswer;
 import com.davendra.calistrack_backend.path.dto.PlacementResult;
-import com.davendra.calistrack_backend.path.dto.WorkoutAssignment;
+import com.davendra.calistrack_backend.path.dto.PlanDayAssignment;
 import com.davendra.calistrack_backend.path.enums.PlacementAnswerType;
-import com.davendra.calistrack_backend.path.facade.NextWorkoutFacade;
+import com.davendra.calistrack_backend.path.facade.PlanProgressionService;
 import com.davendra.calistrack_backend.path.service.PathPlacementEngine;
 import com.davendra.calistrack_backend.progress.entity.UserNode;
 import com.davendra.calistrack_backend.progress.enums.UserNodeStatus;
@@ -41,40 +39,36 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * HTTP use-case orchestrator: validate user state, place on path, assign next workout, persist.
- * Placement and workout selection live in {@link PathPlacementEngine} / {@link NextWorkoutFacade}.
+ * HTTP use-case orchestrator: validate user state, place on path, enroll Day 1 of focus plan.
  */
 @Service
 public class OnboardingService {
 
 	private final NodeRepository nodeRepository;
-	private final WorkoutRepository workoutRepository;
 	private final UserNodeRepository userNodeRepository;
 	private final AppUserRepository appUserRepository;
 	private final OnboardingQuestionProvider questionProvider;
 	private final PathPlacementEngine pathPlacementEngine;
-	private final NextWorkoutFacade nextWorkoutFacade;
+	private final PlanProgressionService planProgressionService;
 	private final CurrentUserService currentUserService;
 	private final WorkoutSessionService workoutSessionService;
 
 	public OnboardingService(
 			NodeRepository nodeRepository,
-			WorkoutRepository workoutRepository,
 			UserNodeRepository userNodeRepository,
 			AppUserRepository appUserRepository,
 			OnboardingQuestionProvider questionProvider,
 			PathPlacementEngine pathPlacementEngine,
-			NextWorkoutFacade nextWorkoutFacade,
+			PlanProgressionService planProgressionService,
 			CurrentUserService currentUserService,
 			WorkoutSessionService workoutSessionService
 	) {
 		this.nodeRepository = nodeRepository;
-		this.workoutRepository = workoutRepository;
 		this.userNodeRepository = userNodeRepository;
 		this.appUserRepository = appUserRepository;
 		this.questionProvider = questionProvider;
 		this.pathPlacementEngine = pathPlacementEngine;
-		this.nextWorkoutFacade = nextWorkoutFacade;
+		this.planProgressionService = planProgressionService;
 		this.currentUserService = currentUserService;
 		this.workoutSessionService = workoutSessionService;
 	}
@@ -82,7 +76,6 @@ public class OnboardingService {
 	@Transactional(readOnly = true)
 	public OnboardingStatusResponse getStatus() {
 		AppUser user = currentUserService.requireActiveUser();
-		// A workout_session is created only after questionnaire answers succeed.
 		return new OnboardingStatusResponse(workoutSessionService.hasAnySession(user));
 	}
 
@@ -120,14 +113,8 @@ public class OnboardingService {
 			appUserRepository.save(user);
 		}
 
-		WorkoutAssignment assignment = nextWorkoutFacade.nextWorkout(placement);
-		Workout workout = workoutRepository.findByIdWithGoalNode(assignment.workoutId())
-				.orElseThrow(() -> new ApiException(
-						HttpStatus.NOT_FOUND,
-						"Workout not found: " + assignment.workoutId()
-				));
-
-		WorkoutSession session = workoutSessionService.createPending(user, workout);
+		PlanDayAssignment assignment = planProgressionService.enrollAndAssignDay1(user, placement);
+		WorkoutSession session = workoutSessionService.createPending(user, assignment);
 
 		List<PlacedUserNodeDto> placedDtos = placement.placements().stream()
 				.map(p -> new PlacedUserNodeDto(p.nodeId(), p.status()))

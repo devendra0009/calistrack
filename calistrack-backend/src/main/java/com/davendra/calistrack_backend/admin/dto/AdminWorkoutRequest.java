@@ -12,6 +12,7 @@ public record AdminWorkoutRequest(
 		@NotBlank @Size(max = 160) String title,
 		String description,
 		@NotNull UUID goalNodeId,
+		@Size(max = 20) String kind,
 		@NotBlank @Size(max = 20) String difficulty,
 		@Size(max = 20) String status,
 		@Valid List<AdminWorkoutExerciseRequest> exercises

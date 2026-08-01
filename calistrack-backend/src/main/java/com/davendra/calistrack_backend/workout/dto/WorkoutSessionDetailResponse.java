@@ -1,5 +1,6 @@
 package com.davendra.calistrack_backend.workout.dto;
 
+import com.davendra.calistrack_backend.progress.enums.UserPlanEnrollmentStatus;
 import com.davendra.calistrack_backend.workout.enums.ExerciseAttemptStatus;
 import com.davendra.calistrack_backend.workout.enums.WorkoutSessionStatus;
 
@@ -12,10 +13,16 @@ public record WorkoutSessionDetailResponse(
 		UUID workoutId,
 		String workoutTitle,
 		String workoutDescription,
+		String workoutKind,
 		UUID focusNodeId,
 		String focusNodeName,
 		WorkoutSessionStatus status,
 		boolean verified,
+		UUID planEnrollmentId,
+		Integer planDayNumber,
+		Integer planDurationDays,
+		UserPlanEnrollmentStatus enrollmentStatus,
+		boolean awaitingVerify,
 		Instant startedAt,
 		Instant completedAt,
 		List<SessionExerciseLineDto> exercises
@@ -25,6 +32,7 @@ public record WorkoutSessionDetailResponse(
 			int sequence,
 			UUID exerciseId,
 			String exerciseName,
+			String exerciseDescription,
 			String exerciseMetricType,
 			String thumbnailUrl,
 			String demoVideoUrl,

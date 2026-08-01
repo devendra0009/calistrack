@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,17 +14,34 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
 
 	boolean existsByUserId(UUID userId);
 
-	boolean existsByUserIdAndStatusIn(UUID userId, Collection<WorkoutSessionStatus> statuses);
+	boolean existsByUserIdAndWorkout_Kind(UUID userId, String workoutKind);
 
-	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user"})
-	Optional<WorkoutSession> findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
+	boolean existsByUserIdAndWorkout_KindAndStatusIn(
 			UUID userId,
+			String workoutKind,
 			Collection<WorkoutSessionStatus> statuses
 	);
 
-	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user"})
-	Optional<WorkoutSession> findFirstByUserIdOrderByCreatedAtDesc(UUID userId);
+	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user", "planEnrollment", "planEnrollment.plan"})
+	Optional<WorkoutSession> findFirstByUserIdAndWorkout_KindAndStatusInOrderByCreatedAtDesc(
+			UUID userId,
+			String workoutKind,
+			Collection<WorkoutSessionStatus> statuses
+	);
 
-	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user"})
+	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user", "planEnrollment", "planEnrollment.plan"})
+	Optional<WorkoutSession> findFirstByUserIdAndWorkout_KindAndStatusOrderByCompletedAtDesc(
+			UUID userId,
+			String workoutKind,
+			WorkoutSessionStatus status
+	);
+
+	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user", "planEnrollment", "planEnrollment.plan"})
+	Optional<WorkoutSession> findFirstByUserIdAndWorkout_KindOrderByCreatedAtDesc(UUID userId, String workoutKind);
+
+	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user", "planEnrollment", "planEnrollment.plan"})
+	List<WorkoutSession> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user", "planEnrollment", "planEnrollment.plan"})
 	Optional<WorkoutSession> findWithDetailsById(UUID id);
 }

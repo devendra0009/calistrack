@@ -24,6 +24,8 @@ import java.util.UUID;
 public class Workout {
 
 	public static final String STATUS_ACTIVE = "ACTIVE";
+	public static final String KIND_SKILL = "SKILL";
+	public static final String KIND_STRETCH = "STRETCH";
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)
@@ -38,6 +40,10 @@ public class Workout {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "goal_node_id", nullable = false)
 	private Node goalNode;
+
+	/** SKILL (path training) or STRETCH (daily routine). */
+	@Column(nullable = false, length = 20)
+	private String kind = KIND_SKILL;
 
 	@Column(nullable = false, length = 20)
 	private String difficulty;
@@ -68,5 +74,13 @@ public class Workout {
 
 	public boolean isActive() {
 		return STATUS_ACTIVE.equals(status);
+	}
+
+	public boolean isStretch() {
+		return KIND_STRETCH.equals(kind);
+	}
+
+	public boolean isSkill() {
+		return KIND_SKILL.equals(kind);
 	}
 }

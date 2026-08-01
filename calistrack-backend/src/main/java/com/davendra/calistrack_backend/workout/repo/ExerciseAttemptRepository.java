@@ -29,4 +29,6 @@ public interface ExerciseAttemptRepository extends JpaRepository<ExerciseAttempt
 			UUID workoutSessionId,
 			UUID workoutExerciseId
 	);
+
+	boolean existsByWorkoutExercise_Id(UUID workoutExerciseId);
 }

@@ -9,6 +9,7 @@ public record AdminWorkoutResponse(
 		String title,
 		String description,
 		NamedRef goalNode,
+		String kind,
 		String difficulty,
 		UUID createdByUserId,
 		String status,

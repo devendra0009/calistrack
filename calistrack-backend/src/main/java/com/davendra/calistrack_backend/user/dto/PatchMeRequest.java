@@ -4,11 +4,11 @@ import com.davendra.calistrack_backend.user.enums.ExperienceLevel;
 import com.davendra.calistrack_backend.user.enums.Gender;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Partial profile update. Only non-null fields are applied.
@@ -25,9 +25,8 @@ public record PatchMeRequest(
 		@DecimalMax(value = "500.00", message = "must be at most 500")
 		BigDecimal weightKg,
 
-		@Min(value = 1, message = "must be at least 1")
-		@Max(value = 120, message = "must be at most 120")
-		Integer age,
+		@Past(message = "must be a past date")
+		LocalDate dateOfBirth,
 
 		Gender gender,
 

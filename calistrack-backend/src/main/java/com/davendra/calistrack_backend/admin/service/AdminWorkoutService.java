@@ -17,15 +17,20 @@ import com.davendra.calistrack_backend.catalog.repo.WorkoutRepository;
 import com.davendra.calistrack_backend.common.exception.ApiException;
 import com.davendra.calistrack_backend.user.entity.AppUser;
 import com.davendra.calistrack_backend.user.service.CurrentUserService;
+import com.davendra.calistrack_backend.workout.repo.ExerciseAttemptRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminWorkoutService {
@@ -35,6 +40,7 @@ public class AdminWorkoutService {
 	private final CurrentUserService currentUserService;
 	private final WorkoutRepository workoutRepository;
 	private final WorkoutExerciseRepository workoutExerciseRepository;
+	private final ExerciseAttemptRepository exerciseAttemptRepository;
 	private final NodeRepository nodeRepository;
 	private final ExerciseRepository exerciseRepository;
 
@@ -42,12 +48,14 @@ public class AdminWorkoutService {
 			CurrentUserService currentUserService,
 			WorkoutRepository workoutRepository,
 			WorkoutExerciseRepository workoutExerciseRepository,
+			ExerciseAttemptRepository exerciseAttemptRepository,
 			NodeRepository nodeRepository,
 			ExerciseRepository exerciseRepository
 	) {
 		this.currentUserService = currentUserService;
 		this.workoutRepository = workoutRepository;
 		this.workoutExerciseRepository = workoutExerciseRepository;
+		this.exerciseAttemptRepository = exerciseAttemptRepository;
 		this.nodeRepository = nodeRepository;
 		this.exerciseRepository = exerciseRepository;
 	}
@@ -87,6 +95,7 @@ public class AdminWorkoutService {
 		workout.setTitle(request.title().trim());
 		workout.setDescription(request.description());
 		workout.setGoalNode(goalNode);
+		workout.setKind(resolveWorkoutKind(request.kind()));
 		workout.setDifficulty(request.difficulty().trim());
 		workout.setStatus(StringUtils.hasText(request.status()) ? request.status().trim() : Workout.STATUS_ACTIVE);
 		workout.setCreatedByUserId(admin.getId());
@@ -105,6 +114,9 @@ public class AdminWorkoutService {
 		workout.setTitle(request.title().trim());
 		workout.setDescription(request.description());
 		workout.setGoalNode(goalNode);
+		if (StringUtils.hasText(request.kind())) {
+			workout.setKind(resolveWorkoutKind(request.kind()));
+		}
 		workout.setDifficulty(request.difficulty().trim());
 		workout.setStatus(StringUtils.hasText(request.status()) ? request.status().trim() : workout.getStatus());
 		Workout saved = workoutRepository.save(workout);
@@ -159,26 +171,68 @@ public class AdminWorkoutService {
 	public void deleteExercise(UUID workoutId, UUID workoutExerciseId) {
 		currentUserService.requireAdmin();
 		WorkoutExercise line = requireWorkoutExercise(workoutId, workoutExerciseId);
+		assertLineRemovable(line);
 		workoutExerciseRepository.delete(line);
 	}
 
+	/**
+	 * Upsert exercise lines by {@code sequence} so existing IDs stay stable.
+	 * Delete-all/recreate breaks {@code exercise_attempt} FK when users already trained the workout.
+	 */
 	private List<WorkoutExercise> replaceExercises(Workout workout, List<AdminWorkoutExerciseRequest> requests) {
 		List<WorkoutExercise> existing = workoutExerciseRepository.findByWorkout_IdOrderBySequenceAsc(workout.getId());
-		workoutExerciseRepository.deleteAll(existing);
-		workoutExerciseRepository.flush();
-
 		if (requests == null || requests.isEmpty()) {
+			for (WorkoutExercise line : existing) {
+				assertLineRemovable(line);
+			}
+			workoutExerciseRepository.deleteAll(existing);
+			workoutExerciseRepository.flush();
 			return List.of();
 		}
 		assertUniqueSequences(requests);
 
-		return requests.stream().map(req -> {
+		Map<Integer, WorkoutExercise> bySequence = existing.stream()
+				.collect(Collectors.toMap(WorkoutExercise::getSequence, Function.identity()));
+
+		Set<Integer> keepSequences = requests.stream()
+				.map(AdminWorkoutExerciseRequest::sequence)
+				.collect(Collectors.toSet());
+
+		List<WorkoutExercise> toRemove = existing.stream()
+				.filter(line -> !keepSequences.contains(line.getSequence()))
+				.toList();
+		for (WorkoutExercise line : toRemove) {
+			assertLineRemovable(line);
+		}
+		if (!toRemove.isEmpty()) {
+			workoutExerciseRepository.deleteAll(toRemove);
+			workoutExerciseRepository.flush();
+			toRemove.forEach(line -> bySequence.remove(line.getSequence()));
+		}
+
+		List<WorkoutExercise> saved = new ArrayList<>(requests.size());
+		for (AdminWorkoutExerciseRequest req : requests) {
 			Exercise exercise = requireExercise(req.exerciseId());
-			WorkoutExercise line = new WorkoutExercise();
-			line.setWorkout(workout);
+			WorkoutExercise line = bySequence.get(req.sequence());
+			if (line == null) {
+				line = new WorkoutExercise();
+				line.setWorkout(workout);
+			}
 			applyLine(line, req, exercise);
-			return workoutExerciseRepository.save(line);
-		}).toList();
+			saved.add(workoutExerciseRepository.save(line));
+		}
+		return saved;
+	}
+
+	private void assertLineRemovable(WorkoutExercise line) {
+		if (exerciseAttemptRepository.existsByWorkoutExercise_Id(line.getId())) {
+			throw new ApiException(
+					HttpStatus.CONFLICT,
+					"Cannot remove exercise line #" + line.getSequence()
+							+ " — athletes already logged attempts against it. "
+							+ "Edit sets/reps in place, or add a new line instead of deleting this one."
+			);
+		}
 	}
 
 	private void applyLine(WorkoutExercise line, AdminWorkoutExerciseRequest request, Exercise exercise) {
@@ -233,6 +287,17 @@ public class AdminWorkoutService {
 				.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exercise not found: " + id));
 	}
 
+	private String resolveWorkoutKind(String kind) {
+		if (!StringUtils.hasText(kind)) {
+			return Workout.KIND_SKILL;
+		}
+		String value = kind.trim();
+		if (Workout.KIND_SKILL.equals(value) || Workout.KIND_STRETCH.equals(value)) {
+			return value;
+		}
+		throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid workout kind: " + value);
+	}
+
 	private AdminWorkoutSummaryResponse toSummary(Workout workout) {
 		long count = workoutExerciseRepository.countByWorkout_Id(workout.getId());
 		Node goal = workout.getGoalNode();
@@ -241,6 +306,7 @@ public class AdminWorkoutService {
 				workout.getTitle(),
 				workout.getDescription(),
 				new NamedRef(goal.getId(), goal.getName()),
+				workout.getKind(),
 				workout.getDifficulty(),
 				workout.getCreatedByUserId(),
 				workout.getStatus(),
@@ -257,6 +323,7 @@ public class AdminWorkoutService {
 				workout.getTitle(),
 				workout.getDescription(),
 				new NamedRef(goal.getId(), goal.getName()),
+				workout.getKind(),
 				workout.getDifficulty(),
 				workout.getCreatedByUserId(),
 				workout.getStatus(),

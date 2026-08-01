@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Period;
 
 @Service
 public class UserProfileService {
@@ -102,8 +104,9 @@ public class UserProfileService {
 		if (request.weightKg() != null) {
 			user.setWeightKg(request.weightKg());
 		}
-		if (request.age() != null) {
-			user.setAge(request.age());
+		if (request.dateOfBirth() != null) {
+			user.setDateOfBirth(request.dateOfBirth());
+			user.setAge(Period.between(request.dateOfBirth(), LocalDate.now()).getYears());
 		}
 		if (request.gender() != null) {
 			user.setGender(request.gender().name());
@@ -121,7 +124,7 @@ public class UserProfileService {
 		boolean empty = request.displayName() == null
 				&& request.heightCm() == null
 				&& request.weightKg() == null
-				&& request.age() == null
+				&& request.dateOfBirth() == null
 				&& request.gender() == null
 				&& request.experience() == null
 				&& request.avatarUrl() == null;

@@ -1,6 +1,9 @@
 package com.davendra.calistrack_backend.common.exception;
 
 import com.davendra.calistrack_backend.auth.exception.AuthException;
+import com.davendra.calistrack_backend.chat.exception.AiCoachException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -17,6 +20,8 @@ import java.time.Instant;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
 	@ExceptionHandler(AuthException.class)
 	public ProblemDetail handleAuth(AuthException ex) {
 		return problem(HttpStatus.UNAUTHORIZED, ex.getMessage(), "authentication-failed");
@@ -25,6 +30,12 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(ApiException.class)
 	public ProblemDetail handleApi(ApiException ex) {
 		return problem(ex.getStatus(), ex.getMessage(), "api-error");
+	}
+
+	@ExceptionHandler(AiCoachException.class)
+	public ProblemDetail handleAiCoach(AiCoachException ex) {
+		log.warn("AI coach error status={}: {}", ex.getStatus().value(), ex.getMessage());
+		return problem(ex.getStatus(), ex.getMessage(), "ai-coach-error");
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
@@ -47,6 +58,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ProblemDetail handleGeneric(Exception ex) {
+		log.error("Unhandled exception", ex);
 		return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", "internal-error");
 	}
 

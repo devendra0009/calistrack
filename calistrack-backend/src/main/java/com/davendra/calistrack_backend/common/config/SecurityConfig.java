@@ -49,6 +49,7 @@ public class SecurityConfig {
 								"/swagger-ui.html"
 						).permitAll()
 						.requestMatchers("/error").permitAll()
+						.requestMatchers("/health").permitAll()
 						.anyRequest().authenticated()
 				)
 				.addFilterBefore(firebaseAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
