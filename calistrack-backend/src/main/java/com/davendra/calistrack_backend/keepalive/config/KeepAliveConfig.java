@@ -1,5 +1,6 @@
 package com.davendra.calistrack_backend.keepalive.config;
 
+import com.davendra.calistrack_backend.keepalive.support.ActiveWindowEvaluator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,12 @@ public class KeepAliveConfig {
 
 	private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
 	private static final Duration READ_TIMEOUT = Duration.ofSeconds(15);
+
+	@Bean
+	@ConditionalOnProperty(prefix = "calistrack.keep-alive", name = "enabled", havingValue = "true")
+	ActiveWindowEvaluator activeWindowEvaluator(KeepAliveProperties properties) {
+		return new ActiveWindowEvaluator(properties);
+	}
 
 	@Bean
 	@ConditionalOnProperty(prefix = "calistrack.keep-alive", name = "enabled", havingValue = "true")

@@ -2,20 +2,17 @@ package com.davendra.calistrack_backend.keepalive.support;
 
 import com.davendra.calistrack_backend.keepalive.config.KeepAliveProperties;
 import com.davendra.calistrack_backend.keepalive.config.KeepAliveProperties.TimeWindow;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Decides whether the keep-alive pinger should run at a given instant.
- * Extracted so weekday/weekend and multi-window rules stay testable and swappable.
+ * Wired as a {@code @Bean} from {@link com.davendra.calistrack_backend.keepalive.config.KeepAliveConfig}.
  */
-@Component
-@ConditionalOnProperty(prefix = "calistrack.keep-alive", name = "enabled", havingValue = "true")
 public class ActiveWindowEvaluator {
 
 	private final KeepAliveProperties properties;
@@ -25,9 +22,9 @@ public class ActiveWindowEvaluator {
 		this(properties, Clock.systemUTC());
 	}
 
-	ActiveWindowEvaluator(KeepAliveProperties properties, Clock clock) {
-		this.properties = properties;
-		this.clock = clock;
+	public ActiveWindowEvaluator(KeepAliveProperties properties, Clock clock) {
+		this.properties = Objects.requireNonNull(properties, "properties");
+		this.clock = Objects.requireNonNull(clock, "clock");
 	}
 
 	public Evaluation evaluate() {
