@@ -15,9 +15,11 @@ import com.davendra.calistrack_backend.catalog.repo.NodeRepository;
 import com.davendra.calistrack_backend.catalog.repo.WorkoutExerciseRepository;
 import com.davendra.calistrack_backend.catalog.repo.WorkoutRepository;
 import com.davendra.calistrack_backend.common.exception.ApiException;
+import com.davendra.calistrack_backend.stretching.service.StretchCatalogService;
 import com.davendra.calistrack_backend.user.entity.AppUser;
 import com.davendra.calistrack_backend.user.service.CurrentUserService;
 import com.davendra.calistrack_backend.workout.repo.ExerciseAttemptRepository;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,6 +89,10 @@ public class AdminWorkoutService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.EXERCISES_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE
+	}, allEntries = true)
 	public AdminWorkoutResponse create(AdminWorkoutRequest request) {
 		AppUser admin = currentUserService.requireAdmin();
 		Node goalNode = requireNode(request.goalNodeId());
@@ -106,6 +112,10 @@ public class AdminWorkoutService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.EXERCISES_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE
+	}, allEntries = true)
 	public AdminWorkoutResponse update(UUID id, AdminWorkoutRequest request) {
 		currentUserService.requireAdmin();
 		Workout workout = requireWorkout(id);
@@ -131,6 +141,10 @@ public class AdminWorkoutService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.EXERCISES_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE
+	}, allEntries = true)
 	public AdminWorkoutResponse deprecate(UUID id) {
 		currentUserService.requireAdmin();
 		Workout workout = requireWorkout(id);
@@ -141,6 +155,7 @@ public class AdminWorkoutService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = StretchCatalogService.EXERCISES_CACHE, allEntries = true)
 	public AdminWorkoutExerciseResponse addExercise(UUID workoutId, AdminWorkoutExerciseRequest request) {
 		currentUserService.requireAdmin();
 		Workout workout = requireWorkout(workoutId);
@@ -154,6 +169,7 @@ public class AdminWorkoutService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = StretchCatalogService.EXERCISES_CACHE, allEntries = true)
 	public AdminWorkoutExerciseResponse updateExercise(
 			UUID workoutId,
 			UUID workoutExerciseId,
@@ -168,6 +184,7 @@ public class AdminWorkoutService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = StretchCatalogService.EXERCISES_CACHE, allEntries = true)
 	public void deleteExercise(UUID workoutId, UUID workoutExerciseId) {
 		currentUserService.requireAdmin();
 		WorkoutExercise line = requireWorkoutExercise(workoutId, workoutExerciseId);

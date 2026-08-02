@@ -15,7 +15,9 @@ import com.davendra.calistrack_backend.catalog.repo.WorkoutPlanDayRepository;
 import com.davendra.calistrack_backend.catalog.repo.WorkoutPlanRepository;
 import com.davendra.calistrack_backend.catalog.repo.WorkoutRepository;
 import com.davendra.calistrack_backend.common.exception.ApiException;
+import com.davendra.calistrack_backend.stretching.service.StretchCatalogService;
 import com.davendra.calistrack_backend.user.service.CurrentUserService;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,6 +78,11 @@ public class AdminWorkoutPlanService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.PLAN_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE,
+			StretchCatalogService.EXERCISES_CACHE
+	}, allEntries = true)
 	public AdminWorkoutPlanResponse create(AdminWorkoutPlanRequest request) {
 		currentUserService.requireAdmin();
 		Node node = requireNode(request.nodeId());
@@ -107,6 +114,11 @@ public class AdminWorkoutPlanService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.PLAN_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE,
+			StretchCatalogService.EXERCISES_CACHE
+	}, allEntries = true)
 	public AdminWorkoutPlanResponse update(UUID id, AdminWorkoutPlanRequest request) {
 		currentUserService.requireAdmin();
 		WorkoutPlan plan = requirePlan(id);
@@ -148,6 +160,11 @@ public class AdminWorkoutPlanService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.PLAN_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE,
+			StretchCatalogService.EXERCISES_CACHE
+	}, allEntries = true)
 	public AdminWorkoutPlanResponse deprecate(UUID id) {
 		currentUserService.requireAdmin();
 		WorkoutPlan plan = requirePlan(id);
@@ -158,6 +175,10 @@ public class AdminWorkoutPlanService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.PLAN_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE
+	}, allEntries = true)
 	public AdminWorkoutPlanDayResponse addDay(UUID planId, AdminWorkoutPlanDayRequest request) {
 		currentUserService.requireAdmin();
 		WorkoutPlan plan = requirePlan(planId);
@@ -170,6 +191,10 @@ public class AdminWorkoutPlanService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.PLAN_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE
+	}, allEntries = true)
 	public AdminWorkoutPlanDayResponse updateDay(UUID planId, UUID dayId, AdminWorkoutPlanDayRequest request) {
 		currentUserService.requireAdmin();
 		WorkoutPlanDay day = workoutPlanDayRepository.findByIdAndPlan_Id(dayId, planId)
@@ -185,6 +210,10 @@ public class AdminWorkoutPlanService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = {
+			StretchCatalogService.PLAN_CACHE,
+			StretchCatalogService.PLAN_DAY_CACHE
+	}, allEntries = true)
 	public void deleteDay(UUID planId, UUID dayId) {
 		currentUserService.requireAdmin();
 		WorkoutPlanDay day = workoutPlanDayRepository.findByIdAndPlan_Id(dayId, planId)

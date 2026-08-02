@@ -27,6 +27,16 @@ public interface WorkoutPlanRepository extends JpaRepository<WorkoutPlan, UUID> 
 	@EntityGraph(attributePaths = "node")
 	Optional<WorkoutPlan> findFirstByCodeAndStatus(String code, String status);
 
+	/** Stretch catalog lookup — no node join. */
+	@Query("""
+			select p from WorkoutPlan p
+			where p.code = :code and p.status = :status
+			""")
+	Optional<WorkoutPlan> findLeanByCodeAndStatus(
+			@Param("code") String code,
+			@Param("status") String status
+	);
+
 	boolean existsByNode_IdAndStatus(UUID nodeId, String status);
 
 	@Query("""

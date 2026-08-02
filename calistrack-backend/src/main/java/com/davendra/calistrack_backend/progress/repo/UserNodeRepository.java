@@ -1,6 +1,7 @@
 package com.davendra.calistrack_backend.progress.repo;
 
 import com.davendra.calistrack_backend.progress.entity.UserNode;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -13,5 +14,6 @@ public interface UserNodeRepository extends JpaRepository<UserNode, UUID> {
 
 	Optional<UserNode> findByUser_IdAndNode_Id(UUID userId, UUID nodeId);
 
+	@EntityGraph(attributePaths = {"node"})
 	List<UserNode> findByUser_Id(UUID userId);
 }

@@ -8,7 +8,9 @@ import com.davendra.calistrack_backend.catalog.entity.NodeEdge;
 import com.davendra.calistrack_backend.catalog.repo.NodeEdgeRepository;
 import com.davendra.calistrack_backend.catalog.repo.NodeRepository;
 import com.davendra.calistrack_backend.common.exception.ApiException;
+import com.davendra.calistrack_backend.path.catalog.DbGoalPathCatalog;
 import com.davendra.calistrack_backend.user.service.CurrentUserService;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +55,7 @@ public class AdminNodeEdgeService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = DbGoalPathCatalog.PATH_CACHE, allEntries = true)
 	public AdminNodeEdgeResponse create(AdminNodeEdgeRequest request) {
 		currentUserService.requireAdmin();
 		if (request.fromNodeId().equals(request.toNodeId())) {
@@ -77,6 +80,7 @@ public class AdminNodeEdgeService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = DbGoalPathCatalog.PATH_CACHE, allEntries = true)
 	public void delete(UUID id) {
 		currentUserService.requireAdmin();
 		NodeEdge edge = requireEdge(id);

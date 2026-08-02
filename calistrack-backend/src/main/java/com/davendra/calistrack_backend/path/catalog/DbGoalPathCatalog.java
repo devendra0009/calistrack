@@ -6,6 +6,7 @@ import com.davendra.calistrack_backend.common.exception.ApiException;
 import com.davendra.calistrack_backend.path.dto.PathQuestion;
 import com.davendra.calistrack_backend.path.entity.PathQuestionEntity;
 import com.davendra.calistrack_backend.path.repo.PathQuestionRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -22,9 +23,14 @@ import java.util.UUID;
 /**
  * Questions from {@code path_question}; path order derived by walking {@code node_edge}
  * backward from the goal, then topologically sorting the ancestor subgraph.
+ *
+ * <p>Loads the full edge list once per computation (tiny catalog) so BFS does not
+ * issue one DB round-trip per graph depth. Results are cached per goal id.
  */
 @Component
 public class DbGoalPathCatalog implements GoalPathCatalog {
+
+	public static final String PATH_CACHE = "goalPathNodeIds";
 
 	private final PathQuestionRepository pathQuestionRepository;
 	private final NodeEdgeRepository nodeEdgeRepository;
@@ -52,40 +58,41 @@ public class DbGoalPathCatalog implements GoalPathCatalog {
 	}
 
 	@Override
+	@Cacheable(cacheNames = PATH_CACHE, key = "#goalNodeId")
 	public List<UUID> pathNodeIds(UUID goalNodeId) {
-		Set<UUID> ancestors = collectAncestorsInclusive(goalNodeId);
+		List<EdgeIds> edges = loadAllEdgeIds();
+		Set<UUID> ancestors = collectAncestorsInclusive(goalNodeId, edges);
 		if (ancestors.size() == 1) {
 			// Goal with no incoming edges — alone is still a valid (trivial) path.
 			return List.of(goalNodeId);
 		}
 
-		List<NodeEdge> subgraphEdges = nodeEdgeRepository
-				.findByFromNode_IdInOrToNode_IdIn(ancestors, ancestors)
-				.stream()
-				.filter(e -> ancestors.contains(e.getFromNode().getId())
-						&& ancestors.contains(e.getToNode().getId()))
+		List<EdgeIds> subgraphEdges = edges.stream()
+				.filter(e -> ancestors.contains(e.fromId()) && ancestors.contains(e.toId()))
 				.toList();
 
 		return topologicalOrder(ancestors, subgraphEdges, goalNodeId);
 	}
 
 	/**
-	 * Walk {@code node_edge} backward: for each node, find edges where it is {@code to_node},
-	 * then continue from those {@code from_node} prerequisites.
+	 * Walk edges backward in memory: for each node, find edges where it is {@code to},
+	 * then continue from those {@code from} prerequisites.
 	 */
-	private Set<UUID> collectAncestorsInclusive(UUID goalNodeId) {
+	private Set<UUID> collectAncestorsInclusive(UUID goalNodeId, List<EdgeIds> edges) {
+		Map<UUID, List<UUID>> prereqsByTo = new HashMap<>();
+		for (EdgeIds edge : edges) {
+			prereqsByTo.computeIfAbsent(edge.toId(), ignored -> new ArrayList<>()).add(edge.fromId());
+		}
+
 		Set<UUID> visited = new HashSet<>();
 		Queue<UUID> queue = new ArrayDeque<>();
 		queue.add(goalNodeId);
 		visited.add(goalNodeId);
 
 		while (!queue.isEmpty()) {
-			Set<UUID> batch = new HashSet<>();
-			while (!queue.isEmpty()) {
-				batch.add(queue.poll());
-			}
-			for (NodeEdge edge : nodeEdgeRepository.findByToNode_IdIn(batch)) {
-				UUID prereq = edge.getFromNode().getId();
+			UUID current = queue.poll();
+			List<UUID> prereqs = prereqsByTo.getOrDefault(current, List.of());
+			for (UUID prereq : prereqs) {
 				if (visited.add(prereq)) {
 					queue.add(prereq);
 				}
@@ -98,16 +105,16 @@ public class DbGoalPathCatalog implements GoalPathCatalog {
 	 * Kahn topological sort so prerequisites appear before dependents. Goal is always last
 	 * among equals when multiple roots exist (e.g. 15 Dips branch into Muscle Up).
 	 */
-	private List<UUID> topologicalOrder(Set<UUID> nodes, List<NodeEdge> edges, UUID goalNodeId) {
+	private List<UUID> topologicalOrder(Set<UUID> nodes, List<EdgeIds> edges, UUID goalNodeId) {
 		Map<UUID, Integer> indegree = new HashMap<>();
 		Map<UUID, List<UUID>> outgoing = new HashMap<>();
 		for (UUID id : nodes) {
 			indegree.put(id, 0);
 			outgoing.put(id, new ArrayList<>());
 		}
-		for (NodeEdge edge : edges) {
-			UUID from = edge.getFromNode().getId();
-			UUID to = edge.getToNode().getId();
+		for (EdgeIds edge : edges) {
+			UUID from = edge.fromId();
+			UUID to = edge.toId();
 			outgoing.get(from).add(to);
 			indegree.merge(to, 1, Integer::sum);
 		}
@@ -143,5 +150,14 @@ public class DbGoalPathCatalog implements GoalPathCatalog {
 			ordered.add(goalNodeId);
 		}
 		return List.copyOf(ordered);
+	}
+
+	private List<EdgeIds> loadAllEdgeIds() {
+		return nodeEdgeRepository.findAllByOrderByCreatedAtAsc().stream()
+				.map(e -> new EdgeIds(e.getFromNode().getId(), e.getToNode().getId()))
+				.toList();
+	}
+
+	private record EdgeIds(UUID fromId, UUID toId) {
 	}
 }

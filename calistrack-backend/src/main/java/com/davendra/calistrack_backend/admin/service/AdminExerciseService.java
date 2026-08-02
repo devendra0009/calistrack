@@ -5,7 +5,9 @@ import com.davendra.calistrack_backend.admin.dto.AdminExerciseResponse;
 import com.davendra.calistrack_backend.catalog.entity.Exercise;
 import com.davendra.calistrack_backend.catalog.repo.ExerciseRepository;
 import com.davendra.calistrack_backend.common.exception.ApiException;
+import com.davendra.calistrack_backend.stretching.service.StretchCatalogService;
 import com.davendra.calistrack_backend.user.service.CurrentUserService;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +55,7 @@ public class AdminExerciseService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = StretchCatalogService.EXERCISES_CACHE, allEntries = true)
 	public AdminExerciseResponse update(UUID id, AdminExerciseRequest request) {
 		currentUserService.requireAdmin();
 		Exercise exercise = requireExercise(id);
@@ -62,6 +65,7 @@ public class AdminExerciseService {
 	}
 
 	@Transactional
+	@CacheEvict(cacheNames = StretchCatalogService.EXERCISES_CACHE, allEntries = true)
 	public AdminExerciseResponse deprecate(UUID id) {
 		currentUserService.requireAdmin();
 		Exercise exercise = requireExercise(id);

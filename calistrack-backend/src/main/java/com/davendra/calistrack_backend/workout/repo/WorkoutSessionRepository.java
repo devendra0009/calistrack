@@ -4,6 +4,8 @@ import com.davendra.calistrack_backend.workout.entity.WorkoutSession;
 import com.davendra.calistrack_backend.workout.enums.WorkoutSessionStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -44,4 +46,37 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
 
 	@EntityGraph(attributePaths = {"workout", "workout.goalNode", "user", "planEnrollment", "planEnrollment.plan"})
 	Optional<WorkoutSession> findWithDetailsById(UUID id);
+
+	/**
+	 * Lean stretch lookup — workout + goalNode only (no enrollment graph).
+	 */
+	@EntityGraph(attributePaths = {"workout", "workout.goalNode"})
+	@Query("""
+			select s from WorkoutSession s
+			where s.user.id = :userId
+			  and s.workout.kind = :kind
+			  and s.status in :statuses
+			order by s.createdAt desc
+			limit 1
+			""")
+	Optional<WorkoutSession> findLatestOpenStretch(
+			@Param("userId") UUID userId,
+			@Param("kind") String kind,
+			@Param("statuses") Collection<WorkoutSessionStatus> statuses
+	);
+
+	@EntityGraph(attributePaths = {"workout", "workout.goalNode"})
+	@Query("""
+			select s from WorkoutSession s
+			where s.user.id = :userId
+			  and s.workout.kind = :kind
+			  and s.status = :status
+			order by s.completedAt desc
+			limit 1
+			""")
+	Optional<WorkoutSession> findLatestCompletedStretch(
+			@Param("userId") UUID userId,
+			@Param("kind") String kind,
+			@Param("status") WorkoutSessionStatus status
+	);
 }

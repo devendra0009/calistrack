@@ -1,14 +1,8 @@
 package com.davendra.calistrack_backend.stretching.service;
 
-import com.davendra.calistrack_backend.catalog.entity.Exercise;
 import com.davendra.calistrack_backend.catalog.entity.Workout;
-import com.davendra.calistrack_backend.catalog.entity.WorkoutExercise;
 import com.davendra.calistrack_backend.catalog.entity.WorkoutPlan;
 import com.davendra.calistrack_backend.catalog.entity.WorkoutPlanDay;
-import com.davendra.calistrack_backend.catalog.repo.WorkoutExerciseRepository;
-import com.davendra.calistrack_backend.catalog.repo.WorkoutPlanDayRepository;
-import com.davendra.calistrack_backend.catalog.repo.WorkoutPlanRepository;
-import com.davendra.calistrack_backend.common.exception.ApiException;
 import com.davendra.calistrack_backend.stretching.dto.StretchingTodayResponse;
 import com.davendra.calistrack_backend.stretching.dto.StretchingTodayResponse.StretchExerciseLineDto;
 import com.davendra.calistrack_backend.user.entity.AppUser;
@@ -18,13 +12,19 @@ import com.davendra.calistrack_backend.workout.entity.WorkoutSession;
 import com.davendra.calistrack_backend.workout.enums.WorkoutSessionStatus;
 import com.davendra.calistrack_backend.workout.repo.WorkoutSessionRepository;
 import com.davendra.calistrack_backend.workout.service.WorkoutSessionService;
-import org.springframework.http.HttpStatus;
+import com.github.benmanes.caffeine.cache.Cache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
 
 /**
  * Morning stretch daily routine: personal Day 1–7 cycle that advances only on complete.
@@ -32,81 +32,128 @@ import java.util.Optional;
 @Service
 public class StretchingService {
 
+	private static final Logger log = LoggerFactory.getLogger(StretchingService.class);
+
 	private final CurrentUserService currentUserService;
-	private final WorkoutPlanRepository workoutPlanRepository;
-	private final WorkoutPlanDayRepository workoutPlanDayRepository;
-	private final WorkoutExerciseRepository workoutExerciseRepository;
+	private final StretchCatalogService stretchCatalogService;
 	private final WorkoutSessionRepository workoutSessionRepository;
 	private final WorkoutSessionService workoutSessionService;
+	private final CacheManager cacheManager;
 
 	public StretchingService(
 			CurrentUserService currentUserService,
-			WorkoutPlanRepository workoutPlanRepository,
-			WorkoutPlanDayRepository workoutPlanDayRepository,
-			WorkoutExerciseRepository workoutExerciseRepository,
+			StretchCatalogService stretchCatalogService,
 			WorkoutSessionRepository workoutSessionRepository,
-			WorkoutSessionService workoutSessionService
+			WorkoutSessionService workoutSessionService,
+			CacheManager cacheManager
 	) {
 		this.currentUserService = currentUserService;
-		this.workoutPlanRepository = workoutPlanRepository;
-		this.workoutPlanDayRepository = workoutPlanDayRepository;
-		this.workoutExerciseRepository = workoutExerciseRepository;
+		this.stretchCatalogService = stretchCatalogService;
 		this.workoutSessionRepository = workoutSessionRepository;
 		this.workoutSessionService = workoutSessionService;
+		this.cacheManager = cacheManager;
 	}
 
 	@Transactional(readOnly = true)
 	public StretchingTodayResponse getToday() {
+		long startedNs = System.nanoTime();
 		AppUser user = currentUserService.requireActiveUser();
-		WorkoutPlan plan = requireMorningStretchPlan();
-		ResolvedDay resolved = resolveCurrentDay(user, plan);
-		return toTodayResponse(plan, resolved);
+
+		boolean planHit = cacheHas(StretchCatalogService.PLAN_CACHE, WorkoutPlan.CODE_MORNING_STRETCH);
+		log.info(
+				"stretching.today.cache.before userId={} planHit={} planKeys={} planDayKeys={} exerciseKeys={}",
+				user.getId(),
+				planHit,
+				cacheKeys(StretchCatalogService.PLAN_CACHE),
+				cacheKeys(StretchCatalogService.PLAN_DAY_CACHE),
+				cacheKeys(StretchCatalogService.EXERCISES_CACHE)
+		);
+
+		WorkoutPlan plan = stretchCatalogService.requireMorningStretchPlan();
+		DayResolution dayResolution = resolveDayNumber(user, plan);
+
+		String planDayKey = plan.getId() + ":" + dayResolution.dayNumber();
+		boolean planDayHit = cacheHas(StretchCatalogService.PLAN_DAY_CACHE, planDayKey);
+
+		WorkoutPlanDay day = stretchCatalogService.requirePlanDay(plan.getId(), dayResolution.dayNumber());
+		UUID workoutId = day.getWorkout().getId();
+		boolean exercisesHit = cacheHas(StretchCatalogService.EXERCISES_CACHE, workoutId);
+
+		List<StretchExerciseLineDto> exercises = stretchCatalogService.exerciseLines(workoutId);
+		WorkoutSession session = dayResolution.openSession();
+		StretchingTodayResponse response = new StretchingTodayResponse(
+				plan.getCode(),
+				plan.getTitle(),
+				dayResolution.dayNumber(),
+				plan.getDurationDays(),
+				workoutId,
+				day.getWorkout().getTitle(),
+				day.getWorkout().getDescription(),
+				session != null ? session.getId() : null,
+				session != null ? session.getStatus() : null,
+				exercises
+		);
+
+		long elapsedMs = (System.nanoTime() - startedNs) / 1_000_000L;
+		log.info(
+				"stretching.today userId={} day={} elapsedMs={} cacheHits={{plan={}, planDay={}, exercises={}}} planKeys={} planDayKeys={} exerciseKeys={}",
+				user.getId(),
+				dayResolution.dayNumber(),
+				elapsedMs,
+				planHit,
+				planDayHit,
+				exercisesHit,
+				cacheKeys(StretchCatalogService.PLAN_CACHE),
+				cacheKeys(StretchCatalogService.PLAN_DAY_CACHE),
+				cacheKeys(StretchCatalogService.EXERCISES_CACHE)
+		);
+		return response;
 	}
 
 	@Transactional
 	public CurrentWorkoutSessionResponse startSession() {
 		AppUser user = currentUserService.requireActiveUser();
-		WorkoutPlan plan = requireMorningStretchPlan();
+		WorkoutPlan plan = stretchCatalogService.requireMorningStretchPlan();
 
-		Optional<WorkoutSession> open = workoutSessionRepository
-				.findFirstByUserIdAndWorkout_KindAndStatusInOrderByCreatedAtDesc(
-						user.getId(),
-						Workout.KIND_STRETCH,
-						EnumSet.of(WorkoutSessionStatus.PENDING, WorkoutSessionStatus.IN_PROGRESS)
-				);
+		Optional<WorkoutSession> open = workoutSessionRepository.findLatestOpenStretch(
+				user.getId(),
+				Workout.KIND_STRETCH,
+				EnumSet.of(WorkoutSessionStatus.PENDING, WorkoutSessionStatus.IN_PROGRESS)
+		);
 		if (open.isPresent()) {
 			return workoutSessionService.toCurrentResponsePublic(open.get());
 		}
 
-		ResolvedDay resolved = resolveCurrentDay(user, plan);
+		DayResolution dayResolution = resolveDayNumber(user, plan);
+		WorkoutPlanDay day = stretchCatalogService.requirePlanDay(plan.getId(), dayResolution.dayNumber());
 		WorkoutSession session = workoutSessionService.createStretchSession(
 				user,
-				resolved.day().getWorkout(),
-				resolved.dayNumber()
+				day.getWorkout(),
+				dayResolution.dayNumber()
 		);
 		return workoutSessionService.toCurrentResponsePublic(session);
 	}
 
-	private ResolvedDay resolveCurrentDay(AppUser user, WorkoutPlan plan) {
-		Optional<WorkoutSession> open = workoutSessionRepository
-				.findFirstByUserIdAndWorkout_KindAndStatusInOrderByCreatedAtDesc(
-						user.getId(),
-						Workout.KIND_STRETCH,
-						EnumSet.of(WorkoutSessionStatus.PENDING, WorkoutSessionStatus.IN_PROGRESS)
-				);
+	/**
+	 * Resolves which day the user is on from session history only (no catalog cache reads).
+	 */
+	private DayResolution resolveDayNumber(AppUser user, WorkoutPlan plan) {
+		Optional<WorkoutSession> open = workoutSessionRepository.findLatestOpenStretch(
+				user.getId(),
+				Workout.KIND_STRETCH,
+				EnumSet.of(WorkoutSessionStatus.PENDING, WorkoutSessionStatus.IN_PROGRESS)
+		);
 		if (open.isPresent()) {
 			WorkoutSession session = open.get();
 			int dayNumber = session.getPlanDayNumber() != null ? session.getPlanDayNumber() : 1;
-			WorkoutPlanDay day = requirePlanDay(plan.getId(), dayNumber);
-			return new ResolvedDay(dayNumber, day, session);
+			return new DayResolution(dayNumber, session);
 		}
 
-		Optional<WorkoutSession> lastCompleted = workoutSessionRepository
-				.findFirstByUserIdAndWorkout_KindAndStatusOrderByCompletedAtDesc(
-						user.getId(),
-						Workout.KIND_STRETCH,
-						WorkoutSessionStatus.COMPLETED
-				);
+		Optional<WorkoutSession> lastCompleted = workoutSessionRepository.findLatestCompletedStretch(
+				user.getId(),
+				Workout.KIND_STRETCH,
+				WorkoutSessionStatus.COMPLETED
+		);
 
 		int dayNumber = 1;
 		if (lastCompleted.isPresent()) {
@@ -114,77 +161,33 @@ public class StretchingService {
 			int finishedDay = finished != null ? finished : 1;
 			dayNumber = finishedDay >= plan.getDurationDays() ? 1 : finishedDay + 1;
 		}
-
-		WorkoutPlanDay day = requirePlanDay(plan.getId(), dayNumber);
-		return new ResolvedDay(dayNumber, day, null);
+		return new DayResolution(dayNumber, null);
 	}
 
-	private WorkoutPlan requireMorningStretchPlan() {
-		return workoutPlanRepository
-				.findFirstByCodeAndStatus(WorkoutPlan.CODE_MORNING_STRETCH, WorkoutPlan.STATUS_ACTIVE)
-				.orElseThrow(() -> new ApiException(
-						HttpStatus.NOT_FOUND,
-						"Morning stretch plan is not configured"
-				));
+	private boolean cacheHas(String cacheName, Object key) {
+		org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+		if (cache == null) {
+			return false;
+		}
+		return cache.get(key) != null;
 	}
 
-	private WorkoutPlanDay requirePlanDay(java.util.UUID planId, int dayNumber) {
-		return workoutPlanDayRepository.findByPlan_IdAndDayNumber(planId, dayNumber)
-				.orElseThrow(() -> new ApiException(
-						HttpStatus.NOT_FOUND,
-						"Stretch plan day " + dayNumber + " not found"
-				));
+	private Set<String> cacheKeys(String cacheName) {
+		org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+		if (cache == null) {
+			return Set.of();
+		}
+		Object nativeCache = cache.getNativeCache();
+		if (!(nativeCache instanceof Cache<?, ?> caffeine)) {
+			return Set.of("(non-caffeine)");
+		}
+		Set<String> keys = new TreeSet<>();
+		for (Object key : caffeine.asMap().keySet()) {
+			keys.add(String.valueOf(key));
+		}
+		return keys;
 	}
 
-	private StretchingTodayResponse toTodayResponse(WorkoutPlan plan, ResolvedDay resolved) {
-		Workout workout = resolved.day().getWorkout();
-		List<StretchExerciseLineDto> exercises = workoutExerciseRepository
-				.findByWorkout_IdOrderBySequenceAsc(workout.getId())
-				.stream()
-				.map(this::toExerciseLine)
-				.toList();
-
-		WorkoutSession session = resolved.openSession();
-		return new StretchingTodayResponse(
-				plan.getCode(),
-				plan.getTitle(),
-				resolved.dayNumber(),
-				plan.getDurationDays(),
-				workout.getId(),
-				workout.getTitle(),
-				workout.getDescription(),
-				session != null ? session.getId() : null,
-				session != null ? session.getStatus() : null,
-				exercises
-		);
-	}
-
-	private StretchExerciseLineDto toExerciseLine(WorkoutExercise line) {
-		Exercise exercise = line.getExercise();
-		String demoVideoUrl = line.getDemoVideoUrl() != null && !line.getDemoVideoUrl().isBlank()
-				? line.getDemoVideoUrl()
-				: exercise.getDemoVideoUrl();
-		return new StretchExerciseLineDto(
-				line.getId(),
-				line.getSequence(),
-				exercise.getId(),
-				exercise.getName(),
-				exercise.getDescription(),
-				exercise.getMetricType(),
-				exercise.getThumbnailUrl(),
-				demoVideoUrl,
-				line.getTargetSets(),
-				line.getTargetReps(),
-				line.getTargetHoldSeconds(),
-				line.getTargetRestSeconds(),
-				line.getNotes()
-		);
-	}
-
-	private record ResolvedDay(
-			int dayNumber,
-			WorkoutPlanDay day,
-			WorkoutSession openSession
-	) {
+	private record DayResolution(int dayNumber, WorkoutSession openSession) {
 	}
 }

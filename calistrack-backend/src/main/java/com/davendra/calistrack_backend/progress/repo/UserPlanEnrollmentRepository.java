@@ -31,6 +31,9 @@ public interface UserPlanEnrollmentRepository extends JpaRepository<UserPlanEnro
 	@EntityGraph(attributePaths = {"plan", "plan.node", "node"})
 	List<UserPlanEnrollment> findByUser_IdOrderByCreatedAtDesc(UUID userId);
 
+	@EntityGraph(attributePaths = {"node"})
+	List<UserPlanEnrollment> findByUser_IdAndStatus(UUID userId, UserPlanEnrollmentStatus status);
+
 	boolean existsByUser_IdAndNode_IdAndStatusIn(
 			UUID userId,
 			UUID nodeId,

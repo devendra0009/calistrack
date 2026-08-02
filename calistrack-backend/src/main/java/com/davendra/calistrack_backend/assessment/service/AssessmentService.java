@@ -26,6 +26,8 @@ import com.davendra.calistrack_backend.workout.entity.WorkoutSession;
 import com.davendra.calistrack_backend.workout.enums.WorkoutSessionStatus;
 import com.davendra.calistrack_backend.workout.repo.WorkoutSessionRepository;
 import com.davendra.calistrack_backend.workout.service.WorkoutSessionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class AssessmentService {
+
+	private static final Logger log = LoggerFactory.getLogger(AssessmentService.class);
 
 	private final AssessmentRepository assessmentRepository;
 	private final UserNodeRepository userNodeRepository;
@@ -80,6 +84,7 @@ public class AssessmentService {
 
 	@Transactional(readOnly = true)
 	public GoalPathAssessmentResponse getPathForCurrentUser() {
+		long startedNs = System.nanoTime();
 		AppUser user = requireUserWithGoal();
 		Node goal = user.getCurrentGoalNode();
 		List<UUID> pathIds = goalPathCatalog.pathNodeIds(goal.getId());
@@ -90,8 +95,9 @@ public class AssessmentService {
 		Map<UUID, UserNode> userNodesByNodeId = userNodeRepository.findByUser_Id(user.getId()).stream()
 				.collect(Collectors.toMap(un -> un.getNode().getId(), Function.identity(), (a, b) -> a));
 
-		Set<UUID> awaitingNodeIds = enrollmentRepository.findByUser_IdOrderByCreatedAtDesc(user.getId()).stream()
-				.filter(e -> e.getStatus() == UserPlanEnrollmentStatus.AWAITING_VERIFY)
+		Set<UUID> awaitingNodeIds = enrollmentRepository
+				.findByUser_IdAndStatus(user.getId(), UserPlanEnrollmentStatus.AWAITING_VERIFY)
+				.stream()
 				.map(e -> e.getNode().getId())
 				.collect(Collectors.toSet());
 
@@ -124,13 +130,22 @@ public class AssessmentService {
 			));
 		}
 
-		return new GoalPathAssessmentResponse(
+		GoalPathAssessmentResponse response = new GoalPathAssessmentResponse(
 				goal.getId(),
 				goal.getName(),
 				verifiedCount,
 				nodes.size(),
 				nodes
 		);
+		long elapsedMs = (System.nanoTime() - startedNs) / 1_000_000L;
+		log.info(
+				"assessment.path userId={} goalId={} nodes={} elapsedMs={}",
+				user.getId(),
+				goal.getId(),
+				nodes.size(),
+				elapsedMs
+		);
+		return response;
 	}
 
 	/**

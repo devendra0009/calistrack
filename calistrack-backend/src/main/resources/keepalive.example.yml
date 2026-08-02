@@ -2,6 +2,12 @@
 # Not loaded by Spring Boot (filename has no application- prefix).
 # Copy into application-render.yml / a profile, or set KEEP_ALIVE_* env vars on the host.
 #
+# Ops checklist (Render free tier):
+#   KEEP_ALIVE_ENABLED=true
+#   KEEP_ALIVE_BASE_URL=https://calistrack-backend.onrender.com
+# Without these, the first request after idle often takes 5–30s (JVM cold start) and
+# will feel like the assessment page is slow even after query optimizations.
+#
 # Extensibility tips:
 #   weekday-windows / weekend-windows — optional overrides of "windows"
 #   schedules — day-specific multi-window rules (highest priority)
@@ -12,7 +18,7 @@
 calistrack:
   keep-alive:
     enabled: true
-    base-url: https://your-service.onrender.com
+    base-url: https://calistrack-backend.onrender.com
     health-path: /health
     time-zone: Asia/Kolkata
     interval: 10m
