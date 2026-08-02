@@ -138,13 +138,13 @@ export function AiCoachChatWidget() {
     messages.length <= 1 && !chatMutation.isPending && input.trim().length === 0
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+    <div className="pointer-events-none fixed right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-end gap-3 md:right-6 md:bottom-6">
       {open ? (
         <section
           role="dialog"
           aria-modal="false"
           aria-labelledby={titleId}
-          className="pointer-events-auto flex h-[min(70dvh,34rem)] w-[min(calc(100vw-2rem),24rem)] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 shadow-xl shadow-black/20"
+          className="pointer-events-auto flex h-[min(58dvh,28rem)] w-[min(calc(100vw-1.5rem),24rem)] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 shadow-xl shadow-black/20 md:h-[min(70dvh,34rem)]"
         >
           <header className="flex items-center justify-between gap-3 border-b border-emerald-900/20 bg-emerald-800 px-4 py-3 text-white">
             <div className="min-w-0">

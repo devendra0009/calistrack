@@ -1,10 +1,8 @@
 import { Link, useNavigate } from 'react-router'
-import { startTransition, useEffect, useRef } from 'react'
+import { startTransition, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ApiError } from '@/shared/api/errors'
 import type {
-  SessionExerciseLineDto,
-  StretchExerciseLineDto,
   StretchingTodayResponse,
   WorkoutSessionDetailResponse,
 } from '@/shared/api/types'
@@ -20,67 +18,184 @@ import {
   useStartStretchingSession,
   useStretchingToday,
 } from '@/features/stretching/api'
+import { HoldTimer } from '@/features/stretching/components/HoldTimer'
+import {
+  holdLabel,
+  parseStretchGuide,
+} from '@/features/stretching/lib/stretchGuide'
 
-function holdLabel(line: StretchExerciseLineDto | SessionExerciseLineDto): string {
-  if (line.targetHoldSeconds != null) {
-    if (line.targetSets != null && line.targetSets > 1) {
-      return `${line.targetSets} × ${line.targetHoldSeconds}s`
-    }
-    return `${line.targetHoldSeconds}s`
+function StretchDemoImage({
+  name,
+  thumbnailUrl,
+  demoVideoUrl,
+  className,
+}: {
+  name: string
+  thumbnailUrl: string | null
+  demoVideoUrl?: string | null
+  className?: string
+}) {
+  const src = thumbnailUrl?.trim() || demoVideoUrl?.trim() || null
+  if (!src) {
+    return (
+      <div
+        className={cn(
+          'flex aspect-4/3 items-center justify-center rounded-2xl border border-dashed border-sky-200 bg-sky-50/60 text-center text-xs text-sky-800/70 sm:aspect-square',
+          className,
+        )}
+      >
+        How-to image
+        <br />
+        coming soon
+      </div>
+    )
   }
-  if (line.targetReps != null) {
-    return line.targetSets != null
-      ? `${line.targetSets} × ${line.targetReps}`
-      : `${line.targetReps} reps`
-  }
-  return 'As comfortable'
+
+  return (
+    <div
+      className={cn(
+        'overflow-hidden rounded-2xl border border-sky-200 bg-sky-50/40',
+        className,
+      )}
+    >
+      <img
+        src={src}
+        alt={`How to do ${name}`}
+        className="aspect-4/3 h-full w-full object-contain sm:aspect-square"
+        loading="lazy"
+        onError={(e) => {
+          const el = e.currentTarget
+          el.style.display = 'none'
+          const fallback = el.nextElementSibling
+          if (fallback instanceof HTMLElement) fallback.hidden = false
+        }}
+      />
+      <div
+        hidden
+        className="flex aspect-4/3 items-center justify-center p-3 text-center text-xs text-sky-800/70 sm:aspect-square"
+      >
+        Add how-to image for {name}
+      </div>
+    </div>
+  )
 }
 
-function howToSteps(description: string | null): string[] {
-  if (!description?.trim()) return []
-  return description
-    .split(/\n+/)
-    .map((line) => line.replace(/^\s*\d+[.)]\s*/, '').trim())
-    .filter(Boolean)
-    .slice(0, 3)
+function StretchGuideBlock({
+  description,
+  compact = false,
+  stepsCollapsed = false,
+}: {
+  description: string | null
+  compact?: boolean
+  /** When true, how-to steps stay collapsed until the user opens them. */
+  stepsCollapsed?: boolean
+}) {
+  const guide = parseStretchGuide(description)
+  if (guide.steps.length === 0 && !guide.targets) return null
+
+  return (
+    <div className={cn('space-y-3', compact ? 'mt-2' : 'mt-4')}>
+      {guide.targets ? (
+        <div className="rounded-xl border border-sky-100 bg-sky-50/80 px-3 py-2.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+            What this helps
+          </p>
+          {guide.muscles ? (
+            <p className="mt-1 text-sm font-medium text-sky-950">
+              {guide.muscles}
+            </p>
+          ) : null}
+          {guide.benefit ? (
+            <p className="mt-0.5 text-sm text-stone-600">{guide.benefit}</p>
+          ) : !guide.muscles ? (
+            <p className="mt-1 text-sm text-stone-700">{guide.targets}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {guide.steps.length > 0 ? (
+        stepsCollapsed ? (
+          <details className="group rounded-xl border border-sky-100 bg-white/70 open:bg-sky-50/40">
+            <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-sky-900 marker:content-none [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center justify-between gap-2">
+                Read form tips
+                <span className="text-xs font-normal text-sky-700/70 group-open:hidden">
+                  optional
+                </span>
+                <span className="hidden text-xs font-normal text-sky-700/70 group-open:inline">
+                  hide
+                </span>
+              </span>
+            </summary>
+            <ol className="space-y-1.5 border-t border-sky-100 px-3 py-3 text-sm text-stone-700">
+              {guide.steps.map((step, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="w-4 shrink-0 font-medium text-sky-700/70">
+                    {i + 1}.
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+              How to
+            </p>
+            <ol className="mt-1.5 space-y-1.5 text-sm text-stone-700">
+              {guide.steps.map((step, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="w-4 shrink-0 font-medium text-sky-700/70">
+                    {i + 1}.
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )
+      ) : null}
+    </div>
+  )
 }
 
 function PreviewList({ today }: { today: StretchingTodayResponse }) {
   return (
     <ul className="space-y-3">
-      {today.exercises.map((line) => {
-        const steps = howToSteps(line.exerciseDescription)
-        return (
-          <li
-            key={line.workoutExerciseId}
-            className="rounded-2xl border border-sky-200/80 bg-white/70 p-4 dark:bg-stone-50/80"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
-                  {line.sequence}. {line.exerciseName}
-                </p>
-                <p className="mt-1 text-sm font-semibold tabular-nums text-stone-800">
-                  {holdLabel(line)}
-                </p>
+      {today.exercises.map((line) => (
+        <li
+          key={line.workoutExerciseId}
+          className="rounded-2xl border border-sky-200/80 bg-white/70 p-3 sm:p-4 dark:bg-stone-50/80"
+        >
+          <div className="flex gap-3">
+            <StretchDemoImage
+              name={line.exerciseName}
+              thumbnailUrl={line.thumbnailUrl}
+              demoVideoUrl={line.demoVideoUrl}
+              className="w-16 shrink-0 sm:w-24 [&>img]:aspect-square"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+                {line.sequence}. {line.exerciseName}
+              </p>
+              <p className="mt-1 text-sm font-semibold tabular-nums text-stone-800">
+                {holdLabel(line)}
                 {line.notes ? (
-                  <p className="mt-1 text-sm text-stone-600">{line.notes}</p>
+                  <span className="mt-0.5 block font-normal text-stone-500 sm:mt-0 sm:ml-2 sm:inline">
+                    · {line.notes}
+                  </span>
                 ) : null}
-                {steps.length > 0 ? (
-                  <ol className="mt-2 space-y-0.5 text-sm text-stone-600">
-                    {steps.map((step, i) => (
-                      <li key={i} className="flex gap-2">
-                        <span className="w-4 shrink-0 text-stone-400">{i + 1}.</span>
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                  </ol>
-                ) : null}
-              </div>
+              </p>
+              <StretchGuideBlock
+                description={line.exerciseDescription}
+                compact
+                stepsCollapsed
+              />
             </div>
-          </li>
-        )
-      })}
+          </div>
+        </li>
+      ))}
     </ul>
   )
 }
@@ -102,6 +217,22 @@ function ActiveStretchList({
   const totalCount = session.exercises.length
   const allDone = totalCount > 0 && doneCount === totalCount
 
+  const current =
+    session.exercises.find((e) => e.attempt?.status !== 'COMPLETED') ?? null
+  const upcoming = session.exercises.filter(
+    (e) =>
+      e.attempt?.status !== 'COMPLETED' &&
+      e.workoutExerciseId !== current?.workoutExerciseId,
+  )
+  const completed = session.exercises.filter(
+    (e) => e.attempt?.status === 'COMPLETED',
+  )
+
+  const [holdDone, setHoldDone] = useState(false)
+  useEffect(() => {
+    setHoldDone(false)
+  }, [current?.workoutExerciseId])
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -118,83 +249,133 @@ function ActiveStretchList({
         </div>
       </div>
 
-      <ul className="space-y-3">
-        {session.exercises.map((line) => {
-          const done = line.attempt?.status === 'COMPLETED'
-          const steps = howToSteps(line.exerciseDescription)
-          return (
-            <li
-              key={line.workoutExerciseId}
-              className={cn(
-                'rounded-2xl border p-4 transition',
-                done
-                  ? 'border-sky-300 bg-sky-100/70'
-                  : 'border-sky-200/80 bg-white/70 dark:bg-stone-50/80',
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
-                    {line.sequence}. {line.exerciseName}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold tabular-nums text-stone-800">
-                    {holdLabel(line)}
-                  </p>
-                  {line.notes ? (
-                    <p className="mt-1 text-sm text-stone-600">{line.notes}</p>
-                  ) : null}
-                  {steps.length > 0 ? (
-                    <ol className="mt-2 space-y-0.5 text-sm text-stone-600">
-                      {steps.map((step, i) => (
-                        <li key={i} className="flex gap-2">
-                          <span className="w-4 shrink-0 text-stone-400">
-                            {i + 1}.
-                          </span>
-                          <span>{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  ) : null}
-                </div>
+      {!readOnly && current ? (
+        <section className="rounded-2xl border border-sky-300 bg-white/90 p-3 shadow-sm sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+            Now · {current.sequence} of {totalCount}
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-sky-950 sm:text-xl">
+            {current.exerciseName}
+          </h2>
+          <p className="mt-1 text-sm text-stone-600">
+            Target {holdLabel(current)}
+            {current.notes ? ` · ${current.notes}` : ''}
+          </p>
 
-                {done ? (
-                  <span className="shrink-0 rounded-full bg-sky-700 px-3 py-1 text-xs font-semibold text-white">
-                    Done
-                  </span>
-                ) : readOnly ? (
-                  <span className="shrink-0 rounded-full bg-stone-200 px-3 py-1 text-xs font-semibold text-stone-700">
-                    Skipped
-                  </span>
-                ) : (
-                  <Button
-                    className="shrink-0 bg-sky-700! hover:bg-sky-800!"
-                    loading={
-                      markDone.isPending &&
-                      markDone.variables === line.workoutExerciseId
-                    }
-                    onClick={async () => {
-                      try {
-                        await markDone.mutateAsync(line.workoutExerciseId)
-                        toast.success(`${line.exerciseName} done`)
-                      } catch (err) {
-                        toast.error(
-                          err instanceof ApiError
-                            ? err.message
-                            : 'Could not mark stretch',
-                        )
-                      }
-                    }}
-                  >
-                    Done
-                  </Button>
-                )}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+          {/* Mobile: image first (visual), then full-width timer strip.
+              sm+: timer left (narrow), image right. */}
+          <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-stretch">
+            <StretchDemoImage
+              name={current.exerciseName}
+              thumbnailUrl={current.thumbnailUrl}
+              demoVideoUrl={current.demoVideoUrl}
+              className="order-1 min-w-0 w-full sm:order-2 sm:min-h-0 sm:flex-1"
+            />
+            <HoldTimer
+              className="order-2 w-full shrink-0 sm:order-1 sm:w-auto sm:self-stretch"
+              resetKey={current.workoutExerciseId}
+              targetSeconds={current.targetHoldSeconds}
+              onComplete={() => setHoldDone(true)}
+            />
+          </div>
 
-      {!readOnly ? (
+          <StretchGuideBlock
+            description={current.exerciseDescription}
+            stepsCollapsed
+          />
+
+          <Button
+            className={cn(
+              'mt-4 w-full sm:mt-5',
+              holdDone
+                ? 'bg-sky-700! hover:bg-sky-800!'
+                : 'bg-sky-600! hover:bg-sky-700!',
+            )}
+            loading={
+              markDone.isPending &&
+              markDone.variables === current.workoutExerciseId
+            }
+            onClick={async () => {
+              try {
+                await markDone.mutateAsync(current.workoutExerciseId)
+                toast.success(`${current.exerciseName} done`)
+              } catch (err) {
+                toast.error(
+                  err instanceof ApiError
+                    ? err.message
+                    : 'Could not mark stretch',
+                )
+              }
+            }}
+          >
+            {holdDone ? 'Mark done & next' : 'Mark done'}
+          </Button>
+        </section>
+      ) : null}
+
+      {!readOnly && upcoming.length > 0 ? (
+        <section>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            Up next
+          </p>
+          <ul className="space-y-2">
+            {upcoming.map((line) => (
+              <li
+                key={line.workoutExerciseId}
+                className="flex items-center justify-between gap-3 rounded-xl border border-sky-100 bg-sky-50/40 px-3 py-2.5"
+              >
+                <span className="min-w-0 truncate text-sm font-medium text-stone-800">
+                  {line.sequence}. {line.exerciseName}
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-stone-500">
+                  {holdLabel(line)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {completed.length > 0 ? (
+        <section>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            Completed
+          </p>
+          <ul className="space-y-2">
+            {completed.map((line) => (
+              <li
+                key={line.workoutExerciseId}
+                className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-100/60 px-3 py-2.5"
+              >
+                <span className="min-w-0 truncate text-sm font-medium text-sky-950">
+                  {line.sequence}. {line.exerciseName}
+                </span>
+                <span className="shrink-0 rounded-full bg-sky-700 px-2.5 py-0.5 text-xs font-semibold text-white">
+                  Done
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {readOnly ? (
+        <section className="rounded-2xl border border-sky-200 bg-sky-50/90 p-5 text-center">
+          <p className="text-sm font-medium text-sky-950">
+            You finished this stretch day.
+          </p>
+          <p className="mt-1 text-sm text-sky-900/80">
+            Tomorrow (or next time) you&apos;ll get the next day in the cycle.
+          </p>
+          <Button
+            variant="secondary"
+            className="mt-4"
+            onClick={() => startTransition(() => navigate('/home'))}
+          >
+            Back to home
+          </Button>
+        </section>
+      ) : (
         <>
           <Button
             className="w-full bg-sky-700! hover:bg-sky-800!"
@@ -218,26 +399,10 @@ function ActiveStretchList({
           </Button>
           {!allDone ? (
             <p className="text-center text-xs text-stone-500">
-              Mark every stretch done to finish.
+              Complete each stretch (timer optional) to finish the day.
             </p>
           ) : null}
         </>
-      ) : (
-        <section className="rounded-2xl border border-sky-200 bg-sky-50/90 p-5 text-center">
-          <p className="text-sm font-medium text-sky-950">
-            You finished this stretch day.
-          </p>
-          <p className="mt-1 text-sm text-sky-900/80">
-            Tomorrow (or next time) you&apos;ll get the next day in the cycle.
-          </p>
-          <Button
-            variant="secondary"
-            className="mt-4"
-            onClick={() => startTransition(() => navigate('/home'))}
-          >
-            Back to home
-          </Button>
-        </section>
       )}
     </div>
   )
@@ -321,7 +486,7 @@ export function StretchTodayPage() {
       subtitle={`${today.workoutTitle} · Day ${today.dayNumber} of ${today.durationDays}`}
     >
       <div className="space-y-5">
-        <section className="rounded-2xl border border-sky-200 bg-linear-to-br from-sky-50 via-sky-50/80 to-stone-50 p-5 shadow-sm sm:p-6">
+        <section className="rounded-2xl border border-sky-200 bg-linear-to-br from-sky-50 via-sky-50/80 to-stone-50 p-4 shadow-sm sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
             Daily mobility · not a skill workout
           </p>

@@ -7,7 +7,10 @@ export function AppLayout() {
   return (
     <div className="bg-app min-h-dvh">
       <AppNav />
-      <Outlet />
+      {/* Extra bottom space on mobile clears the fixed tab bar + home indicator */}
+      <div className="pb-[calc(4.25rem+env(safe-area-inset-bottom))] md:pb-0">
+        <Outlet />
+      </div>
       <AiCoachChatWidget />
     </div>
   )

@@ -6,6 +6,7 @@ import type { SessionExerciseLineDto } from "@/shared/api/types";
 import { Button } from "@/shared/ui/Button";
 import { PageShell } from "@/shared/ui/PageShell";
 import { Spinner } from "@/shared/ui/Spinner";
+import { parseStretchGuide } from "@/features/stretching/lib/stretchGuide";
 import {
   useSessionTrainMutations,
   useWorkoutSessionDetail,
@@ -59,6 +60,8 @@ function roleFromNotes(notes: string | null): string | null {
 }
 
 function howToSteps(description: string | null): string[] {
+  const guide = parseStretchGuide(description);
+  if (guide.steps.length > 0) return guide.steps;
   if (!description?.trim()) return [];
   return description
     .split(/\n+/)
@@ -292,7 +295,10 @@ export function WorkoutSessionPage() {
           {session.exercises.map((line) => {
             const done = line.attempt?.status === "COMPLETED";
             const role = roleFromNotes(line.notes);
-            const steps = howToSteps(line.exerciseDescription);
+            const guide = parseStretchGuide(line.exerciseDescription);
+            const steps = guide.steps.length > 0
+              ? guide.steps
+              : howToSteps(line.exerciseDescription);
 
             return (
               <li
@@ -337,6 +343,13 @@ export function WorkoutSessionPage() {
                           </li>
                         ))}
                       </ol>
+                    ) : null}
+
+                    {isStretch && guide.targets ? (
+                      <p className="mt-2 text-xs text-sky-900/80">
+                        <span className="font-semibold">Helps: </span>
+                        {guide.targets}
+                      </p>
                     ) : null}
                   </div>
 

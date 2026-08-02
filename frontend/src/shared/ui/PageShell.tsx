@@ -17,13 +17,15 @@ export function PageShell({
   embedded?: boolean
 }) {
   const body = (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-stone-900">
+    <main className="mx-auto w-full max-w-3xl px-3 py-5 sm:px-4 sm:py-8">
+      <div className="mb-5 sm:mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
           {title}
         </h1>
         {subtitle ? (
-          <p className="mt-2 max-w-xl text-stone-600">{subtitle}</p>
+          <p className="mt-1.5 max-w-xl text-sm text-stone-600 sm:mt-2 sm:text-base">
+            {subtitle}
+          </p>
         ) : null}
       </div>
       {children}
@@ -37,10 +39,10 @@ export function PageShell({
   return (
     <div className="bg-app min-h-dvh">
       <header className="border-b border-stone-200/80 bg-stone-50/70 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-3 py-3 sm:px-4 sm:py-4">
           <Link
             to="/"
-            className="text-lg font-bold tracking-tight text-emerald-900"
+            className="text-base font-bold tracking-tight text-emerald-900 sm:text-lg"
           >
             CalisTrack
           </Link>

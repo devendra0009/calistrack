@@ -7,6 +7,7 @@ import { cn } from '@/shared/lib/cn'
 import { useMe } from '@/features/profile/api'
 import { useWorkoutSessions } from '@/features/home/api'
 import { useStretchingToday } from '@/features/stretching/api'
+import { usePrefetchAssessmentPath } from '@/features/assessment/api'
 import type { CurrentWorkoutSessionResponse } from '@/shared/api/types'
 
 type SessionFilter = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
@@ -147,6 +148,7 @@ export function HomePage() {
   const me = useMe()
   const sessionsQuery = useWorkoutSessions(Boolean(me.data))
   const navigate = useNavigate()
+  const prefetchAssessment = usePrefetchAssessmentPath()
   const [filter, setFilter] = useState<SessionFilter | null>(null)
 
   const skillSessions = useMemo(
@@ -167,6 +169,10 @@ export function HomePage() {
     }
     return next
   }, [skillSessions])
+
+  useEffect(() => {
+    if (me.data) prefetchAssessment()
+  }, [me.data, prefetchAssessment])
 
   useEffect(() => {
     if (filter !== null || !sessionsQuery.isSuccess) return
@@ -213,6 +219,8 @@ export function HomePage() {
             <Button
               variant="secondary"
               className="w-full shrink-0 sm:w-auto"
+              onMouseEnter={prefetchAssessment}
+              onFocus={prefetchAssessment}
               onClick={() =>
                 startTransition(() => navigate('/assessment'))
               }
@@ -236,6 +244,8 @@ export function HomePage() {
             </p>
             <Button
               className="mt-4 w-full sm:w-auto"
+              onMouseEnter={prefetchAssessment}
+              onFocus={prefetchAssessment}
               onClick={() => startTransition(() => navigate('/assessment'))}
             >
               Verify skill to continue

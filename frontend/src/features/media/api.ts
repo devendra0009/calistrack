@@ -7,6 +7,11 @@ import type {
   ResourceType,
   UploadRequestResponse,
 } from '@/features/media/types'
+import {
+  compressImageForUpload,
+  IMAGE_COMPRESS_PRESETS,
+  type CompressImageOptions,
+} from '@/features/media/compressImage'
 
 const IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
@@ -25,9 +30,14 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024
 const MAX_EXERCISE_IMAGE_BYTES = 10 * 1024 * 1024
 const MAX_EXERCISE_VIDEO_BYTES = 50 * 1024 * 1024
 
+function compressPresetFor(mediaType: MediaType): CompressImageOptions {
+  if (mediaType === 'AVATAR') return IMAGE_COMPRESS_PRESETS.avatar
+  return IMAGE_COMPRESS_PRESETS.exercise
+}
+
 /**
  * Direct-to-storage upload:
- * 1) authorize → 2) PUT/POST file to provider → 3) complete + verify
+ * 1) compress images mildly → 2) authorize → 3) PUT/POST → 4) complete + verify
  */
 export async function uploadMediaFile(
   file: File,
@@ -37,19 +47,29 @@ export async function uploadMediaFile(
     visibility?: MediaVisibility
   },
 ): Promise<MediaResponse> {
+  const resourceType = options.resourceType ?? 'IMAGE'
+  let uploadFile = file
+
+  if (resourceType === 'IMAGE' && IMAGE_MIME_TYPES.has(file.type)) {
+    uploadFile = await compressImageForUpload(
+      file,
+      compressPresetFor(options.mediaType),
+    )
+  }
+
   const authorization = await api.post<UploadRequestResponse>(
     '/api/v1/media/upload-request',
     {
-      originalFilename: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      fileSizeBytes: file.size,
-      resourceType: options.resourceType ?? 'IMAGE',
+      originalFilename: uploadFile.name,
+      mimeType: uploadFile.type || 'application/octet-stream',
+      fileSizeBytes: uploadFile.size,
+      resourceType,
       mediaType: options.mediaType,
       visibility: options.visibility ?? 'PUBLIC',
     },
   )
 
-  await transferToProvider(authorization, file)
+  await transferToProvider(authorization, uploadFile)
 
   return api.post<MediaResponse>('/api/v1/media/complete', {
     mediaId: authorization.mediaId,

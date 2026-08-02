@@ -71,6 +71,11 @@ body,
   min-height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family:
@@ -82,6 +87,7 @@ body {
   color: var(--color-stone-900, #1c1917);
   background: var(--color-stone-50, #fafaf9);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 .bg-app {
