@@ -15,10 +15,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -39,7 +37,7 @@ public class DefaultPathPlacementEngine implements PathPlacementEngine {
 		requireActiveGoalNode(goalNodeId);
 
 		List<PathQuestion> expected = goalPathCatalog.questionsFor(goalNodeId);
-		validateAnswersMatchQuestions(expected, answers);
+		validatePrefixAnswers(expected, answers);
 
 		List<UUID> path = goalPathCatalog.pathNodeIds(goalNodeId);
 		Map<UUID, Node> nodesById = loadNodes(path);
@@ -48,6 +46,18 @@ public class DefaultPathPlacementEngine implements PathPlacementEngine {
 		List<NodePlacement> placements = buildPlacements(path, focusNodeId);
 
 		return new PlacementResult(goalNodeId, focusNodeId, List.copyOf(placements));
+	}
+
+	@Override
+	public boolean isAnswerPassed(PlacementAnswer answer) {
+		validateAnswerValue(answer);
+		Node node = nodeRepository
+				.findById(answer.nodeId())
+				.orElseThrow(() -> new ApiException(
+						HttpStatus.NOT_FOUND,
+						"Path node not found: " + answer.nodeId()
+				));
+		return isPassed(answer, node);
 	}
 
 	private Node requireActiveGoalNode(UUID goalNodeId) {
@@ -70,25 +80,30 @@ public class DefaultPathPlacementEngine implements PathPlacementEngine {
 		return byId;
 	}
 
-	private void validateAnswersMatchQuestions(List<PathQuestion> expected, List<PlacementAnswer> answers) {
-		if (answers.size() != expected.size()) {
+	/**
+	 * Answers must be the ordered prefix expected[0..n). Placement is allowed when the
+	 * prefix ends on a fail, or when n equals the full question list (all pass → goal).
+	 */
+	private void validatePrefixAnswers(List<PathQuestion> expected, List<PlacementAnswer> answers) {
+		if (answers == null || answers.isEmpty()) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "At least one answer is required");
+		}
+		if (answers.size() > expected.size()) {
 			throw new ApiException(
 					HttpStatus.BAD_REQUEST,
-					"Expected " + expected.size() + " answers, got " + answers.size()
+					"Expected at most " + expected.size() + " answers, got " + answers.size()
 			);
 		}
 
-		Set<UUID> seen = new HashSet<>();
-		Map<UUID, PathQuestion> expectedByNode = expected.stream()
-				.collect(Collectors.toMap(PathQuestion::nodeId, Function.identity()));
-
-		for (PlacementAnswer answer : answers) {
-			if (!seen.add(answer.nodeId())) {
-				throw new ApiException(HttpStatus.BAD_REQUEST, "Duplicate answer for node: " + answer.nodeId());
-			}
-			PathQuestion question = expectedByNode.get(answer.nodeId());
-			if (question == null) {
-				throw new ApiException(HttpStatus.BAD_REQUEST, "Unexpected answer for node: " + answer.nodeId());
+		for (int i = 0; i < answers.size(); i++) {
+			PlacementAnswer answer = answers.get(i);
+			PathQuestion question = expected.get(i);
+			if (!question.nodeId().equals(answer.nodeId())) {
+				throw new ApiException(
+						HttpStatus.BAD_REQUEST,
+						"Answer at index " + i + " must be for node " + question.nodeId()
+								+ ", got " + answer.nodeId()
+				);
 			}
 			if (question.type() != answer.type()) {
 				throw new ApiException(
@@ -98,12 +113,6 @@ public class DefaultPathPlacementEngine implements PathPlacementEngine {
 				);
 			}
 			validateAnswerValue(answer);
-		}
-
-		for (PathQuestion question : expected) {
-			if (!seen.contains(question.nodeId())) {
-				throw new ApiException(HttpStatus.BAD_REQUEST, "Missing answer for node: " + question.nodeId());
-			}
 		}
 	}
 
@@ -125,13 +134,30 @@ public class DefaultPathPlacementEngine implements PathPlacementEngine {
 			byNode.put(answer.nodeId(), answer);
 		}
 
-		for (PathQuestion question : expected) {
+		boolean sawFail = false;
+		UUID focusFromFail = null;
+		for (int i = 0; i < answers.size(); i++) {
+			PathQuestion question = expected.get(i);
 			PlacementAnswer answer = byNode.get(question.nodeId());
 			Node node = nodesById.get(question.nodeId());
 			if (!isPassed(answer, node)) {
-				return question.nodeId();
+				sawFail = true;
+				focusFromFail = question.nodeId();
+				break;
 			}
 		}
+
+		if (sawFail) {
+			return focusFromFail;
+		}
+
+		if (answers.size() < expected.size()) {
+			throw new ApiException(
+					HttpStatus.BAD_REQUEST,
+					"Incomplete answers: all provided answers passed but more questions remain"
+			);
+		}
+
 		return goalNodeId;
 	}
 
