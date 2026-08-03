@@ -65,6 +65,13 @@ export interface OnboardingQuestionsResponse {
   questions: OnboardingQuestionDto[]
 }
 
+export interface OnboardingNextQuestionResponse {
+  goalNodeId: string
+  index: number
+  total: number
+  question: OnboardingQuestionDto
+}
+
 export interface OnboardingAnswerDto {
   nodeId: string
   type: QuestionType
@@ -74,6 +81,27 @@ export interface OnboardingAnswerDto {
 export interface OnboardingAnswersRequest {
   goalNodeId: string
   answers: OnboardingAnswerDto[]
+}
+
+export interface OnboardingStepRequest {
+  goalNodeId: string
+  answers: OnboardingAnswerDto[]
+}
+
+export type OnboardingStepOutcome = 'NEXT' | 'PLACED'
+
+export interface OnboardingStepResponse {
+  outcome: OnboardingStepOutcome
+  index: number
+  total: number
+  nextQuestion?: OnboardingQuestionDto | null
+  goalNodeId?: string | null
+  focusNodeId?: string | null
+  sessionId?: string | null
+  workoutId?: string | null
+  workoutTitle?: string | null
+  sessionStatus?: WorkoutSessionStatus | null
+  placedNodes?: PlacedUserNodeDto[] | null
 }
 
 export interface PlacedUserNodeDto {

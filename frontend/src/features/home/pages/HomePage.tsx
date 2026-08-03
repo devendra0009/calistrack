@@ -8,6 +8,7 @@ import { useMe } from '@/features/profile/api'
 import { useWorkoutSessions } from '@/features/home/api'
 import { useStretchingToday } from '@/features/stretching/api'
 import { usePrefetchAssessmentPath } from '@/features/assessment/api'
+import { useWorkoutMusic } from '@/features/workout-music/WorkoutMusicProvider'
 import type { CurrentWorkoutSessionResponse } from '@/shared/api/types'
 
 type SessionFilter = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
@@ -80,6 +81,7 @@ function pickDefaultFilter(
 function MorningStretchCard() {
   const navigate = useNavigate()
   const stretch = useStretchingToday()
+  const { enterWorkout } = useWorkoutMusic()
 
   if (stretch.isLoading) {
     return (
@@ -135,7 +137,10 @@ function MorningStretchCard() {
         </div>
         <Button
           className="w-full shrink-0 bg-sky-700! hover:bg-sky-800! sm:w-auto"
-          onClick={() => startTransition(() => navigate('/stretch'))}
+          onClick={() => {
+            if (inProgress) enterWorkout()
+            startTransition(() => navigate('/stretch'))
+          }}
         >
           {inProgress ? 'Continue stretch' : 'Open stretch'}
         </Button>
@@ -148,6 +153,7 @@ export function HomePage() {
   const me = useMe()
   const sessionsQuery = useWorkoutSessions(Boolean(me.data))
   const navigate = useNavigate()
+  const { enterWorkout } = useWorkoutMusic()
   const prefetchAssessment = usePrefetchAssessmentPath()
   const [filter, setFilter] = useState<SessionFilter | null>(null)
 
@@ -342,11 +348,12 @@ export function HomePage() {
                     <Button
                       variant={isOpen ? 'primary' : 'secondary'}
                       className="w-full shrink-0 sm:w-auto"
-                      onClick={() =>
+                      onClick={() => {
+                        if (isOpen) enterWorkout()
                         startTransition(() =>
                           navigate(`/sessions/${session.sessionId}`),
                         )
-                      }
+                      }}
                     >
                       {ctaLabel(session)}
                     </Button>

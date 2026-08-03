@@ -14,6 +14,7 @@ import { logout } from '@/features/auth/api'
 import { useAuthSession } from '@/features/auth/AuthSessionProvider'
 import { usePrefetchAssessmentPath } from '@/features/assessment/api'
 import { usePrefetchStretchingToday } from '@/features/stretching/api'
+import { WorkoutMusicControl } from '@/features/workout-music/WorkoutMusicControl'
 
 const LINKS = [
   { to: '/home', label: 'Home', end: true, icon: Home },
@@ -79,7 +80,8 @@ export function AppNav() {
                 {link.label}
               </NavLink>
             ))}
-            <ThemeToggle className="ml-1" />
+            <WorkoutMusicControl className="ml-1" />
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => void signOut()}
@@ -92,6 +94,7 @@ export function AppNav() {
 
           {/* Mobile top actions */}
           <div className="flex items-center gap-1.5 md:hidden">
+            <WorkoutMusicControl />
             <ThemeToggle />
             <button
               type="button"

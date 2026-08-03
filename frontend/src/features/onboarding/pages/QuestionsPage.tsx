@@ -1,8 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Controller, useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { startTransition } from 'react'
+import { startTransition, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { ApiError } from '@/shared/api/errors'
@@ -12,14 +9,20 @@ import { PageShell } from '@/shared/ui/PageShell'
 import { Spinner } from '@/shared/ui/Spinner'
 import { useMe } from '@/features/profile/api'
 import {
-  fetchOnboardingQuestions,
+  fetchNextOnboardingQuestion,
+  onboardingNextQuestionQueryKey,
   onboardingStatusQueryKey,
-  submitOnboardingAnswers,
+  submitOnboardingStep,
 } from '@/features/onboarding/api'
 import { currentSessionQueryKey } from '@/features/home/api'
-import type { OnboardingAnswerDto, QuestionType } from '@/shared/api/types'
-
-type AnswerMap = Record<string, string>
+import type {
+  OnboardingAnswerDto,
+  OnboardingAnswersResponse,
+  OnboardingQuestionDto,
+  OnboardingStepResponse,
+  QuestionType,
+} from '@/shared/api/types'
+import { cn } from '@/shared/lib/cn'
 
 export function QuestionsPage() {
   const navigate = useNavigate()
@@ -27,21 +30,27 @@ export function QuestionsPage() {
   const me = useMe()
   const goalNodeId = me.data?.goal?.id
 
-  const questions = useQuery({
-    queryKey: ['onboarding', 'questions', goalNodeId],
-    queryFn: () => fetchOnboardingQuestions(goalNodeId!),
-    enabled: Boolean(goalNodeId),
+  const [index, setIndex] = useState(0)
+  const [answers, setAnswers] = useState<OnboardingAnswerDto[]>([])
+  const [repsValue, setRepsValue] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [cachedQuestion, setCachedQuestion] =
+    useState<OnboardingQuestionDto | null>(null)
+  const [cachedTotal, setCachedTotal] = useState<number | null>(null)
+
+  const questionQuery = useQuery({
+    queryKey: onboardingNextQuestionQueryKey(goalNodeId, index),
+    queryFn: () => fetchNextOnboardingQuestion(goalNodeId!, index),
+    enabled: Boolean(goalNodeId) && !cachedQuestion,
   })
 
-  const schema = z.record(z.string(), z.string().min(1, 'Required'))
+  const question =
+    cachedQuestion ?? questionQuery.data?.question ?? null
+  const total = cachedTotal ?? questionQuery.data?.total ?? null
 
-  const form = useForm<AnswerMap>({
-    resolver: zodResolver(schema),
-  })
-
-  if (me.isLoading || questions.isLoading) {
+  if (me.isLoading || (questionQuery.isLoading && !question)) {
     return (
-      <PageShell title="Placement questions">
+      <PageShell title="Where are you now?">
         <Spinner />
       </PageShell>
     )
@@ -51,123 +60,173 @@ export function QuestionsPage() {
     return <Navigate to="/setup/goal" replace />
   }
 
-  if (questions.isError || !questions.data) {
+  if ((questionQuery.isError && !question) || !question || total == null) {
     return (
-      <PageShell title="Placement questions">
+      <PageShell title="Where are you now?">
         <p className="text-red-600">
-          {questions.error instanceof ApiError
-            ? questions.error.message
-            : 'Could not load questions.'}
+          {questionQuery.error instanceof ApiError
+            ? questionQuery.error.message
+            : 'Could not load question.'}
         </p>
       </PageShell>
     )
   }
 
-  const qList = questions.data.questions
+  async function finishPlacement(result: OnboardingStepResponse) {
+    if (
+      !result.goalNodeId ||
+      !result.focusNodeId ||
+      !result.sessionId ||
+      !result.workoutId ||
+      !result.workoutTitle ||
+      !result.sessionStatus ||
+      !result.placedNodes
+    ) {
+      throw new Error('Incomplete placement response')
+    }
+
+    const placement: OnboardingAnswersResponse = {
+      goalNodeId: result.goalNodeId,
+      focusNodeId: result.focusNodeId,
+      sessionId: result.sessionId,
+      workoutId: result.workoutId,
+      workoutTitle: result.workoutTitle,
+      sessionStatus: result.sessionStatus,
+      placedNodes: result.placedNodes,
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: onboardingStatusQueryKey }),
+      queryClient.invalidateQueries({ queryKey: currentSessionQueryKey }),
+    ])
+    sessionStorage.setItem(
+      'calistrack.lastPlacement',
+      JSON.stringify(placement),
+    )
+    toast.success('Placement complete')
+    startTransition(() => navigate('/setup/result', { replace: true }))
+  }
+
+  async function submitAnswer(value: number | boolean) {
+    if (!goalNodeId || !question || submitting) return
+
+    const nextAnswers: OnboardingAnswerDto[] = [
+      ...answers,
+      {
+        nodeId: question.nodeId,
+        type: question.type as QuestionType,
+        value,
+      },
+    ]
+
+    setSubmitting(true)
+    try {
+      const result = await submitOnboardingStep({
+        goalNodeId,
+        answers: nextAnswers,
+      })
+
+      if (result.outcome === 'PLACED') {
+        await finishPlacement(result)
+        return
+      }
+
+      setAnswers(nextAnswers)
+      setRepsValue('')
+      setCachedQuestion(result.nextQuestion ?? null)
+      setCachedTotal(result.total)
+      setIndex(result.index)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        await queryClient.invalidateQueries({
+          queryKey: onboardingStatusQueryKey,
+        })
+        toast.message('Placement already completed')
+        startTransition(() => navigate('/home', { replace: true }))
+        return
+      }
+      toast.error(
+        err instanceof ApiError ? err.message : 'Could not submit answer',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <PageShell
       title="Where are you now?"
-      subtitle="Answer honestly — this places you on the path and creates your first session."
+      subtitle="One question at a time — honest answers place you on the path."
     >
-      <form
-        className="space-y-5 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm"
-        onSubmit={form.handleSubmit(async (values) => {
-          const answers: OnboardingAnswerDto[] = qList.map((q) => {
-            const raw = values[q.nodeId]
-            let value: number | boolean | string = raw
-            if (q.type === 'REPS') value = Number(raw)
-            if (q.type === 'YES_NO') value = raw === 'true'
-            return {
-              nodeId: q.nodeId,
-              type: q.type as QuestionType,
-              value,
-            }
-          })
+      <div className="space-y-5 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+          Question {index + 1} of {total}
+        </p>
 
-          try {
-            const result = await submitOnboardingAnswers({
-              goalNodeId,
-              answers,
-            })
-            await Promise.all([
-              queryClient.invalidateQueries({ queryKey: onboardingStatusQueryKey }),
-              queryClient.invalidateQueries({ queryKey: currentSessionQueryKey }),
-            ])
-            sessionStorage.setItem(
-              'calistrack.lastPlacement',
-              JSON.stringify(result),
-            )
-            toast.success('Placement complete')
-            startTransition(() => navigate('/setup/result', { replace: true }))
-          } catch (err) {
-            if (err instanceof ApiError && err.status === 409) {
-              await queryClient.invalidateQueries({
-                queryKey: onboardingStatusQueryKey,
-              })
-              toast.message('Placement already completed')
-              startTransition(() => navigate('/home', { replace: true }))
-              return
-            }
-            toast.error(
-              err instanceof ApiError ? err.message : 'Could not submit answers',
-            )
-          }
-        })}
-      >
-        {qList.map((q) => (
+        <div
+          className="h-1.5 overflow-hidden rounded-full bg-stone-200"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={index + 1}
+          aria-label={`Question ${index + 1} of ${total}`}
+        >
           <div
-            key={q.nodeId}
-            className="space-y-2 border-b border-stone-100 pb-4 last:border-0"
-          >
-            <p className="font-medium text-stone-900">{q.prompt}</p>
-            {q.type === 'REPS' ? (
-              <Input
-                label="Reps"
-                type="number"
-                min={0}
-                {...form.register(q.nodeId)}
-                error={form.formState.errors[q.nodeId]?.message}
-              />
-            ) : (
-              <Controller
-                control={form.control}
-                name={q.nodeId}
-                render={({ field }) => (
-                  <div className="flex gap-3">
-                    {[
-                      { label: 'Yes', value: 'true' },
-                      { label: 'No', value: 'false' },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => field.onChange(opt.value)}
-                        className={
-                          field.value === opt.value
-                            ? 'rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white'
-                            : 'rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-800'
-                        }
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                    {form.formState.errors[q.nodeId] ? (
-                      <span className="text-xs text-red-600">
-                        {form.formState.errors[q.nodeId]?.message}
-                      </span>
-                    ) : null}
-                  </div>
-                )}
-              />
-            )}
-          </div>
-        ))}
+            className="h-full rounded-full bg-emerald-700 transition-[width] duration-300"
+            style={{ width: `${((index + 1) / total) * 100}%` }}
+          />
+        </div>
 
-        <Button type="submit" loading={form.formState.isSubmitting}>
-          Place me on the path
-        </Button>
-      </form>
+        <p className="text-lg font-medium text-stone-900">{question.prompt}</p>
+
+        {question.type === 'REPS' ? (
+          <div className="space-y-4">
+            <Input
+              label="Reps"
+              type="number"
+              min={0}
+              value={repsValue}
+              onChange={(e) => setRepsValue(e.target.value)}
+              disabled={submitting}
+            />
+            <Button
+              loading={submitting}
+              disabled={repsValue.trim() === '' || Number.isNaN(Number(repsValue))}
+              onClick={() => {
+                const n = Number(repsValue)
+                if (Number.isNaN(n)) {
+                  toast.error('Enter a valid number of reps')
+                  return
+                }
+                void submitAnswer(n)
+              }}
+            >
+              Continue
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            {[
+              { label: 'Yes', value: true },
+              { label: 'No', value: false },
+            ].map((opt) => (
+              <button
+                key={String(opt.value)}
+                type="button"
+                disabled={submitting}
+                onClick={() => void submitAnswer(opt.value)}
+                className={cn(
+                  'flex-1 rounded-lg border px-4 py-3 text-sm font-semibold transition',
+                  'border-stone-300 text-stone-800 hover:border-emerald-600 hover:bg-emerald-50',
+                  'disabled:cursor-not-allowed disabled:opacity-60',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </PageShell>
   )
 }

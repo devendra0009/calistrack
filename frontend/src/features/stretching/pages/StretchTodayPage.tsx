@@ -23,6 +23,8 @@ import {
   holdLabel,
   parseStretchGuide,
 } from '@/features/stretching/lib/stretchGuide'
+import { speakCue, preloadStretchSounds } from '@/features/stretching/lib/speakCue'
+import { useWorkoutMusic } from '@/features/workout-music/WorkoutMusicProvider'
 
 function StretchDemoImage({
   name,
@@ -209,6 +211,7 @@ function ActiveStretchList({
 }) {
   const { markDone, complete } = useSessionTrainMutations(sessionId)
   const navigate = useNavigate()
+  const { leaveWorkout } = useWorkoutMusic()
   const readOnly =
     session.status === 'COMPLETED' || session.status === 'ABANDONED'
   const doneCount = session.exercises.filter(
@@ -248,6 +251,54 @@ function ActiveStretchList({
           />
         </div>
       </div>
+
+      {readOnly ? (
+        <section className="rounded-2xl border border-sky-200 bg-sky-50/90 p-5 text-center">
+          <p className="text-sm font-medium text-sky-950">
+            You finished this stretch day.
+          </p>
+          <p className="mt-1 text-sm text-sky-900/80">
+            Tomorrow (or next time) you&apos;ll get the next day in the cycle.
+          </p>
+          <Button
+            variant="secondary"
+            className="mt-4"
+            onClick={() => startTransition(() => navigate('/home'))}
+          >
+            Back to home
+          </Button>
+        </section>
+      ) : (
+        <div className="space-y-2">
+          <Button
+            className="w-full bg-sky-700! hover:bg-sky-800!"
+            loading={complete.isPending}
+            disabled={!allDone}
+            onClick={async () => {
+              try {
+                speakCue('finish')
+                await complete.mutateAsync()
+                leaveWorkout()
+                toast.success('Stretching complete — nice start to the day')
+                startTransition(() => navigate('/home', { replace: true }))
+              } catch (err) {
+                toast.error(
+                  err instanceof ApiError
+                    ? err.message
+                    : 'Could not finish stretching',
+                )
+              }
+            }}
+          >
+            Finish stretching
+          </Button>
+          {!allDone ? (
+            <p className="text-center text-xs text-stone-500">
+              Complete each stretch (timer optional) to finish the day.
+            </p>
+          ) : null}
+        </div>
+      )}
 
       {!readOnly && current ? (
         <section className="rounded-2xl border border-sky-300 bg-white/90 p-3 shadow-sm sm:p-5">
@@ -297,6 +348,7 @@ function ActiveStretchList({
             }
             onClick={async () => {
               try {
+                speakCue(upcoming.length > 0 ? 'next' : 'done')
                 await markDone.mutateAsync(current.workoutExerciseId)
                 toast.success(`${current.exerciseName} done`)
               } catch (err) {
@@ -358,52 +410,6 @@ function ActiveStretchList({
           </ul>
         </section>
       ) : null}
-
-      {readOnly ? (
-        <section className="rounded-2xl border border-sky-200 bg-sky-50/90 p-5 text-center">
-          <p className="text-sm font-medium text-sky-950">
-            You finished this stretch day.
-          </p>
-          <p className="mt-1 text-sm text-sky-900/80">
-            Tomorrow (or next time) you&apos;ll get the next day in the cycle.
-          </p>
-          <Button
-            variant="secondary"
-            className="mt-4"
-            onClick={() => startTransition(() => navigate('/home'))}
-          >
-            Back to home
-          </Button>
-        </section>
-      ) : (
-        <>
-          <Button
-            className="w-full bg-sky-700! hover:bg-sky-800!"
-            loading={complete.isPending}
-            disabled={!allDone}
-            onClick={async () => {
-              try {
-                await complete.mutateAsync()
-                toast.success('Stretching complete — nice start to the day')
-                startTransition(() => navigate('/home', { replace: true }))
-              } catch (err) {
-                toast.error(
-                  err instanceof ApiError
-                    ? err.message
-                    : 'Could not finish stretching',
-                )
-              }
-            }}
-          >
-            Finish stretching
-          </Button>
-          {!allDone ? (
-            <p className="text-center text-xs text-stone-500">
-              Complete each stretch (timer optional) to finish the day.
-            </p>
-          ) : null}
-        </>
-      )}
     </div>
   )
 }
@@ -446,6 +452,11 @@ function StretchSessionPanel({ sessionId }: { sessionId: string }) {
 export function StretchTodayPage() {
   const todayQuery = useStretchingToday()
   const start = useStartStretchingSession()
+  const { enterWorkout } = useWorkoutMusic()
+
+  useEffect(() => {
+    preloadStretchSounds()
+  }, [])
 
   if (todayQuery.isLoading) {
     return (
@@ -504,28 +515,32 @@ export function StretchTodayPage() {
           <StretchSessionPanel sessionId={today.sessionId} />
         ) : (
           <>
+            <div className="space-y-2">
+              <Button
+                className="w-full bg-sky-700! hover:bg-sky-800!"
+                loading={start.isPending}
+                onClick={async () => {
+                  try {
+                    speakCue('start')
+                    enterWorkout()
+                    await start.mutateAsync()
+                    toast.success('Stretching started')
+                  } catch (err) {
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : 'Could not start stretching',
+                    )
+                  }
+                }}
+              >
+                Start stretching
+              </Button>
+              <p className="text-center text-xs text-stone-500">
+                Your skill workout stays separate — you can train both.
+              </p>
+            </div>
             <PreviewList today={today} />
-            <Button
-              className="w-full bg-sky-700! hover:bg-sky-800!"
-              loading={start.isPending}
-              onClick={async () => {
-                try {
-                  await start.mutateAsync()
-                  toast.success('Stretching started')
-                } catch (err) {
-                  toast.error(
-                    err instanceof ApiError
-                      ? err.message
-                      : 'Could not start stretching',
-                  )
-                }
-              }}
-            >
-              Start stretching
-            </Button>
-            <p className="text-center text-xs text-stone-500">
-              Your skill workout stays separate — you can train both.
-            </p>
           </>
         )}
       </div>

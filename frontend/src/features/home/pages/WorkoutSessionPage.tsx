@@ -11,6 +11,7 @@ import {
   useSessionTrainMutations,
   useWorkoutSessionDetail,
 } from "@/features/home/api";
+import { useWorkoutMusic } from "@/features/workout-music/WorkoutMusicProvider";
 
 /** Compact prescription chips: how much to do. */
 function DoseChips({ line }: { line: SessionExerciseLineDto }) {
@@ -184,6 +185,7 @@ export function WorkoutSessionPage() {
   const { begin, markDone, complete } = useSessionTrainMutations(
     sessionId ?? "",
   );
+  const { leaveWorkout } = useWorkoutMusic();
   const beginRequested = useRef(false);
 
   useEffect(() => {
@@ -412,6 +414,7 @@ export function WorkoutSessionPage() {
             onClick={async () => {
               try {
                 const next = await complete.mutateAsync();
+                leaveWorkout();
                 if (isStretch) {
                   toast.success("Stretching complete — nice start to the day");
                   navigate("/stretch", { replace: true });

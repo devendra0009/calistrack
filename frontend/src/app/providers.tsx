@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 import { AuthSessionProvider } from '@/features/auth/AuthSessionProvider'
 import { router } from '@/app/router'
 import { ThemeProvider, useTheme } from '@/shared/theme/ThemeProvider'
+import { WorkoutMusicProvider } from '@/features/workout-music/WorkoutMusicProvider'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,8 +25,10 @@ export function AppProviders() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthSessionProvider>
-          <RouterProvider router={router} />
-          <ThemedToaster />
+          <WorkoutMusicProvider>
+            <RouterProvider router={router} />
+            <ThemedToaster />
+          </WorkoutMusicProvider>
         </AuthSessionProvider>
       </ThemeProvider>
     </QueryClientProvider>

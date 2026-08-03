@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pause, Play, RotateCcw } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
 import { formatHoldClock } from '@/features/stretching/lib/stretchGuide'
+import { speakCue } from '@/features/stretching/lib/speakCue'
 
 type HoldTimerProps = {
   /** Target hold duration in seconds. Falls back to a free-run stopwatch when null. */
@@ -75,6 +76,7 @@ export function HoldTimer({
           if (prev <= 1) {
             window.clearInterval(id)
             setMode('done')
+            speakCue('rest now')
             onCompleteRef.current?.()
             return 0
           }
@@ -109,6 +111,7 @@ export function HoldTimer({
         <IconButton
           label={mode === 'done' ? 'Restart' : 'Start'}
           onClick={() => {
+            speakCue('start')
             setSeconds(isCountdown ? (targetSeconds ?? 0) : 0)
             setMode('running')
           }}
@@ -121,14 +124,23 @@ export function HoldTimer({
         <IconButton
           label="Pause"
           variant="secondary"
-          onClick={() => setMode('paused')}
+          onClick={() => {
+            speakCue('stop')
+            setMode('paused')
+          }}
         >
           <Pause className="size-4 fill-current" />
         </IconButton>
       ) : null}
 
       {mode === 'paused' ? (
-        <IconButton label="Resume" onClick={() => setMode('running')}>
+        <IconButton
+          label="Resume"
+          onClick={() => {
+            speakCue('resume')
+            setMode('running')
+          }}
+        >
           <Play className="size-4 fill-current" />
         </IconButton>
       ) : null}
