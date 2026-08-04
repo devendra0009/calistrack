@@ -124,6 +124,7 @@ public class AuthService {
 
 	@Transactional
 	public void logout(LogoutRequest request) {
+		log.info("logging out: {}", request);
 		refreshTokenRepository.findByTokenHashAndRevokedAtIsNull(TokenHashUtils.sha256(request.refreshToken()))
 				.ifPresent(token -> token.setRevokedAt(Instant.now()));
 		// ID token stays valid until Firebase expiry (~1h). Instant kill of all devices:
