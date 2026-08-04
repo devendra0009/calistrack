@@ -50,6 +50,15 @@ public class SecurityConfig {
 						).permitAll()
 						.requestMatchers("/error").permitAll()
 						.requestMatchers("/health").permitAll()
+						// Actuator: Prometheus scrape + liveness/readiness (no auth for local/compose scrapers)
+						.requestMatchers(
+								"/actuator/health",
+								"/actuator/health/**",
+								"/actuator/info",
+								"/actuator/prometheus",
+								"/actuator/metrics",
+								"/actuator/metrics/**"
+						).permitAll()
 						.anyRequest().authenticated()
 				)
 				.addFilterBefore(firebaseAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
