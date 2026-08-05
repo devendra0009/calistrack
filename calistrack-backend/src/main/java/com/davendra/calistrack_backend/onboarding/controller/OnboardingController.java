@@ -43,6 +43,7 @@ public class OnboardingController {
 		return onboardingService.getStatus();
 	}
 
+	// older flow
 	@GetMapping("/questions")
 	@Operation(
 			summary = "Get all placement questions",
@@ -77,6 +78,7 @@ public class OnboardingController {
 		return onboardingService.submitStep(request);
 	}
 
+	// older flow
 	@PostMapping("/answers")
 	@ResponseStatus(HttpStatus.CREATED)
 	@Operation(

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -78,5 +79,25 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
 			@Param("userId") UUID userId,
 			@Param("kind") String kind,
 			@Param("status") WorkoutSessionStatus status
+	);
+
+	/**
+	 * Completed skill + stretch sessions in [fromInclusive, toExclusive) by completed_at.
+	 * Used by the activity calendar.
+	 */
+	@EntityGraph(attributePaths = {"workout"})
+	@Query("""
+			select s from WorkoutSession s
+			where s.user.id = :userId
+			  and s.status = :status
+			  and s.completedAt >= :fromInclusive
+			  and s.completedAt < :toExclusive
+			order by s.completedAt asc
+			""")
+	List<WorkoutSession> findCompletedInRange(
+			@Param("userId") UUID userId,
+			@Param("status") WorkoutSessionStatus status,
+			@Param("fromInclusive") Instant fromInclusive,
+			@Param("toExclusive") Instant toExclusive
 	);
 }
