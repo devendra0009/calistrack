@@ -7,7 +7,7 @@ import {
   PersonStanding,
   User,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import { cn } from '@/shared/lib/cn'
 import { ThemeToggle } from '@/shared/ui/ThemeToggle'
 import { logout } from '@/features/auth/api'

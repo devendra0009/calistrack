@@ -1,8 +1,19 @@
-export type ThemePreference = 'light' | 'dark'
+/**
+ * Thin re-exports — persistence + DOM apply live in theme.ts.
+ * Kept so existing imports continue to work.
+ */
+export {
+  type ThemeId as ThemePreference,
+  resolveInitialTheme,
+  setTheme as applyThemeClass,
+  systemPrefersDark,
+} from '@/shared/theme/theme'
+
+import { setTheme, type ThemeId } from '@/shared/theme/theme'
 
 const THEME_KEY = 'calistrack.theme'
 
-export function readStoredTheme(): ThemePreference | null {
+export function readStoredTheme(): ThemeId | null {
   try {
     const value = localStorage.getItem(THEME_KEY)
     if (value === 'light' || value === 'dark') return value
@@ -12,7 +23,7 @@ export function readStoredTheme(): ThemePreference | null {
   return null
 }
 
-export function writeStoredTheme(theme: ThemePreference): void {
+export function writeStoredTheme(theme: ThemeId): void {
   try {
     localStorage.setItem(THEME_KEY, theme)
   } catch {
@@ -20,14 +31,7 @@ export function writeStoredTheme(theme: ThemePreference): void {
   }
 }
 
-export function systemPrefersDark(): boolean {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-}
-
-export function resolveInitialTheme(): ThemePreference {
-  return readStoredTheme() ?? (systemPrefersDark() ? 'dark' : 'light')
-}
-
-export function applyThemeClass(theme: ThemePreference): void {
-  document.documentElement.classList.toggle('dark', theme === 'dark')
+/** @deprecated Prefer setTheme from theme.ts — kept for call-site compatibility. */
+export function applyThemeOnly(theme: ThemeId): void {
+  setTheme(theme, false)
 }

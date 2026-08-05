@@ -1,23 +1,27 @@
-import { useActionState, startTransition } from 'react'
+import { useActionState, startTransition, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ApiError } from '@/shared/api/errors'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { PageShell } from '@/shared/ui/PageShell'
+import { toast } from '@/shared/ui/notify'
 import { login } from '@/features/auth/api'
 import { loginSchema } from '@/features/auth/schemas'
 
-type FormState = { error?: string; fieldErrors?: Record<string, string> }
+type FormState = { fieldErrors?: Record<string, string> }
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   const [state, formAction, pending] = useActionState(
     async (_prev: FormState, formData: FormData): Promise<FormState> => {
-      const parsed = loginSchema.safeParse({
-        email: formData.get('email'),
-        password: formData.get('password'),
-      })
+      const values = {
+        email: String(formData.get('email') ?? ''),
+        password: String(formData.get('password') ?? ''),
+      }
+      const parsed = loginSchema.safeParse(values)
 
       if (!parsed.success) {
         const fieldErrors: Record<string, string> = {}
@@ -35,7 +39,11 @@ export function LoginPage() {
       } catch (err) {
         const message =
           err instanceof ApiError ? err.message : 'Unable to sign in'
-        return { error: message }
+        // Defer so the toast isn't dropped by the form-action transition
+        window.setTimeout(() => {
+          toast.error(message, { title: 'Couldn’t sign in' })
+        }, 0)
+        return {}
       }
     },
     {},
@@ -46,13 +54,18 @@ export function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to continue your calisthenics path."
     >
-      <form action={formAction} className="max-w-md space-y-4 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm">
+      <form
+        action={formAction}
+        className="max-w-md space-y-4 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm"
+      >
         <Input
           label="Email"
           name="email"
           type="email"
           autoComplete="email"
           required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           error={state.fieldErrors?.email}
         />
         <Input
@@ -61,13 +74,10 @@ export function LoginPage() {
           type="password"
           autoComplete="current-password"
           required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           error={state.fieldErrors?.password}
         />
-        {state.error ? (
-          <p className="text-sm text-red-600" role="alert">
-            {state.error}
-          </p>
-        ) : null}
         <Button type="submit" loading={pending} className="w-full">
           Sign in
         </Button>

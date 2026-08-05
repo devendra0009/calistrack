@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import { ApiError } from '@/shared/api/errors'
 import type { ExperienceLevel, Gender } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
+import { PageError } from '@/shared/ui/PageError'
 import { PageShell } from '@/shared/ui/PageShell'
 import { Spinner } from '@/shared/ui/Spinner'
 import { UserAvatar } from '@/shared/ui/UserAvatar'
@@ -210,7 +211,11 @@ export function ProfilePage() {
   if (!me.data) {
     return (
       <PageShell embedded title="Your profile">
-        <p className="text-red-600">Could not load profile.</p>
+        <PageError
+          title="Profile didn’t load"
+          message="Could not load profile. Check your connection and try again."
+          onRetry={() => void me.refetch()}
+        />
       </PageShell>
     )
   }

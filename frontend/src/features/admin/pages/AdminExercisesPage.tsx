@@ -1,5 +1,5 @@
 import { useId, useState, type ChangeEvent, type FormEvent } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import {
   useAdminExercises,
   useCreateExercise,

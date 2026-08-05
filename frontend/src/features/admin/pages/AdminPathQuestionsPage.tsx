@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import {
   useAdminEdges,
   useAdminNodes,

@@ -511,3 +511,18 @@ export interface ChatRequest {
 export interface ChatResponse {
   response: string
 }
+
+/** One calendar day with at least one completed skill workout or stretch. */
+export interface ActivityDayDto {
+  date: string
+  count: number
+  skillCount: number
+  stretchCount: number
+}
+
+export interface ActivityCalendarResponse {
+  from: string
+  to: string
+  timezone: string
+  days: ActivityDayDto[]
+}

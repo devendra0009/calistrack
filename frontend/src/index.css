@@ -1,8 +1,19 @@
 @import 'tailwindcss';
+@import './shared/theme/theme.css';
+
+@keyframes toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
 
 /*
  * Night-friendly dark palette (warm stone, muted emerald, no pure black/white).
  * Remaps Tailwind color tokens under .dark so existing utilities adapt.
+ * Mood atmosphere lives in theme.css via [data-mood] (side/top washes).
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -91,7 +102,7 @@ body {
 }
 
 .bg-app {
-  background-image: var(--app-bg);
+  background-image: var(--mood-wash, none), var(--app-bg);
   background-color: var(--color-stone-50, #fafaf9);
 }
 

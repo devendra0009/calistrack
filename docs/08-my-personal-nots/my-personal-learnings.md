@@ -29,3 +29,12 @@ how to enable sign-in with google
         4. not naturally sorted -> need some timestamp to see latest record
 
 -> letsay i am using transactional and some user clicks two times , won't idempotency break as both request is isolately running on memory for now and noone knows about each other ??
+
+
+# docker
+docker compose up and specifying the yml file 
+        -> docker compose -f monitoring/docker-compose.yml up -d
+docker compose down and specifying the yml file 
+        -> docker compose -f monitoring/docker-compose.yml down
+
+# monitoring using actuator, prometheus and grafana

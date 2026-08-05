@@ -12,9 +12,11 @@ Build checklist. All under `/api/v1`. Auth: JWT unless marked Public.
 | V   | 4         | PATCH                     | `/me`                                                           | Edit profile / onboarding stats                                             | `app_user`                                                                   |
 | V   | 5         | DELETE                    | `/me`                                                           | Delete account                                                              | soft delete (`app_user.deleted_at`); revoke sessions; disable Firebase       |
 | V   | 6         | PUT                       | `/me/goal`                                                      | Pick / change goal                                                          | `app_user`, read `node`                                                      |
-| V   | 7         | GET                       | `/onboarding/questions?goalNodeId=`                             | After goal select                                                           | `path_question`, `node_edge` (path walk)                                     |
+| V   | 7         | GET                       | `/onboarding/questions?goalNodeId=`                             | Legacy: full question list                                                  | `path_question`, `node_edge` (path walk)                                     |
+| V   | 7b        | GET                       | `/onboarding/questions/next?goalNodeId=&index=`                 | After goal select — one question at a time (primary setup UI)               | `path_question`, `node_edge` (path walk)                                     |
 | V   | 7a        | GET                       | `/onboarding/status`                                            | Route: questionnaire vs home                                                | `workout_session` exists?                                                    |
-| V   | 8         | POST                      | `/onboarding/answers`                                           | Submit Q&A                                                                  | `user_node`, create `workout_session` **PENDING**                            |
+| V   | 8         | POST                      | `/onboarding/answers`                                           | Legacy batch submit (full list or prefix ending on fail)                    | `user_node`, create `workout_session` **PENDING**                            |
+| V   | 8a        | POST                      | `/onboarding/step`                                              | Submit one answer; `NEXT` or `PLACED` (first fail / all pass)                | `user_node`, create `workout_session` **PENDING** when placed                |
 | 9   | GET       | `/home`                   | Home tab                                                        | current session + goal + next                                               |
 | 10  | GET       | `/progress`               | Progress tab                                                    | `user_node`, `workout_session`, `node`                                      |
 | 11  | GET       | `/nodes`                  | Skill explorer list                                             | `node`, `user_node`                                                         |
@@ -31,6 +33,7 @@ Build checklist. All under `/api/v1`. Auth: JWT unless marked Public.
 | V   | 21        | GET                       | `/workout-sessions/{id}`                                        | Session train / history detail                                              | `workout_exercise`, `exercise_attempt`, …                                    |
 | —   | S1        | GET                       | `/stretching/today`                                             | Morning stretch card                                                        | Current Day 1–7 (advances only on complete)                                  |
 | —   | S2        | POST                      | `/stretching/sessions`                                          | Start stretch                                                               | Stretch session (parallel to skill workout)                                  |
+| —   | A1        | GET                       | `/activity?from=&to=&timezone=`                                 | Home activity calendar                                                      | Completed `workout_session` days (skill + stretch)                           |
 | 22  | GET       | `/workouts/{id}`          | Preview template                                                | `workout`, `workout_exercise`, `exercise`                                   |
 | 23  | GET/POST… | `/admin/nodes` … CRUD     | Admin seed/UI                                                   | catalog tables                                                              |
 
@@ -38,7 +41,7 @@ Build checklist. All under `/api/v1`. Auth: JWT unless marked Public.
 
 1. Auth (1–2, 2a–2b) + me (3–4)
 2. Catalog read (11–12, 22) + seed
-3. Goal + onboarding (6–8) → first PENDING session
+3. Goal + onboarding (6, 7b, 8a; legacy 7–8) → first PENDING session
 4. Session train loop (13–16)
 5. Verify + admin (17–19) → next PENDING
 6. Home / progress / history (9–10, 20–21)
@@ -72,5 +75,5 @@ todo phase2
 -> if user left a workout for a long time -> just make it aborted !! -> give option to restart again
 -> video to be uploaded for a exercise -> so admin can add a video of how to perform that exercise
 -> todo: work on assessment part too !! -> user had a option to give assesment for all the goals in the path we assumed they can do !!
--> todo: github/strava like tracker(calendar)
+-> todo: github/strava like tracker(calendar) — `GET /api/v1/activity` + Home 7-day tracker (extensible to 30/60)
 -> compressing images/videos and then storing to save storage service

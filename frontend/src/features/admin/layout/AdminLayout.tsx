@@ -1,6 +1,6 @@
 import { startTransition } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import { ADMIN_STEPS } from '@/features/admin/constants'
 import { logout } from '@/features/auth/api'
 import { useAuthSession } from '@/features/auth/AuthSessionProvider'

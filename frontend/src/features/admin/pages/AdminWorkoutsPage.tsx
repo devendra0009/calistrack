@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import {
   useAdminNodes,
   useAdminWorkouts,

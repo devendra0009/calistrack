@@ -1,14 +1,23 @@
-import { useActionState, useEffect, useId, useRef, useState, startTransition, type ChangeEvent } from 'react'
+import {
+  useActionState,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  startTransition,
+  type ChangeEvent,
+} from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ApiError } from '@/shared/api/errors'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { PageShell } from '@/shared/ui/PageShell'
+import { toast } from '@/shared/ui/notify'
 import { register } from '@/features/auth/api'
 import { registerSchema } from '@/features/auth/schemas'
 import { uploadAvatarAndSetProfile } from '@/features/media/api'
 
-type FormState = { error?: string; fieldErrors?: Record<string, string> }
+type FormState = { fieldErrors?: Record<string, string> }
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif'
 
@@ -18,6 +27,9 @@ export function RegisterPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   useEffect(() => {
     if (!avatarFile) {
@@ -31,11 +43,12 @@ export function RegisterPage() {
 
   const [state, formAction, pending] = useActionState(
     async (_prev: FormState, formData: FormData): Promise<FormState> => {
-      const parsed = registerSchema.safeParse({
-        displayName: formData.get('displayName'),
-        email: formData.get('email'),
-        password: formData.get('password'),
-      })
+      const values = {
+        displayName: String(formData.get('displayName') ?? ''),
+        email: String(formData.get('email') ?? ''),
+        password: String(formData.get('password') ?? ''),
+      }
+      const parsed = registerSchema.safeParse(values)
 
       if (!parsed.success) {
         const fieldErrors: Record<string, string> = {}
@@ -58,7 +71,10 @@ export function RegisterPage() {
       } catch (err) {
         const message =
           err instanceof ApiError ? err.message : 'Unable to create account'
-        return { error: message }
+        window.setTimeout(() => {
+          toast.error(message, { title: 'Couldn’t create account' })
+        }, 0)
+        return {}
       }
     },
     {},
@@ -81,7 +97,10 @@ export function RegisterPage() {
       title="Start your path"
       subtitle="Create an account to set a goal and get your first workout session."
     >
-      <form action={formAction} className="max-w-md space-y-4 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm">
+      <form
+        action={formAction}
+        className="max-w-md space-y-4 rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm"
+      >
         <div className="flex flex-col items-center gap-3 pb-2">
           <label
             htmlFor={fileInputId}
@@ -135,6 +154,8 @@ export function RegisterPage() {
           name="displayName"
           autoComplete="nickname"
           required
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
           error={state.fieldErrors?.displayName}
         />
         <Input
@@ -143,6 +164,8 @@ export function RegisterPage() {
           type="email"
           autoComplete="email"
           required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           error={state.fieldErrors?.email}
         />
         <Input
@@ -152,13 +175,10 @@ export function RegisterPage() {
           autoComplete="new-password"
           required
           minLength={6}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           error={state.fieldErrors?.password}
         />
-        {state.error ? (
-          <p className="text-sm text-red-600" role="alert">
-            {state.error}
-          </p>
-        ) : null}
         <Button type="submit" loading={pending} className="w-full">
           Create account
         </Button>

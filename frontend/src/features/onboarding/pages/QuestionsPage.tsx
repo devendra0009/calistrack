@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { startTransition, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import { ApiError } from '@/shared/api/errors'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
+import { PageError } from '@/shared/ui/PageError'
 import { PageShell } from '@/shared/ui/PageShell'
 import { Spinner } from '@/shared/ui/Spinner'
 import { useMe } from '@/features/profile/api'
@@ -63,11 +64,15 @@ export function QuestionsPage() {
   if ((questionQuery.isError && !question) || !question || total == null) {
     return (
       <PageShell title="Where are you now?">
-        <p className="text-red-600">
-          {questionQuery.error instanceof ApiError
-            ? questionQuery.error.message
-            : 'Could not load question.'}
-        </p>
+        <PageError
+          title="Placement question stalled"
+          message={
+            questionQuery.error instanceof ApiError
+              ? questionQuery.error.message
+              : 'Could not load question.'
+          }
+          onRetry={() => void questionQuery.refetch()}
+        />
       </PageShell>
     )
   }

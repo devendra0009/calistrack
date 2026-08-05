@@ -20,6 +20,7 @@ import {
   writeStoredMood,
   writeStoredMusicEnabled,
 } from '@/shared/lib/workout-music-storage'
+import { setMoodFromTrack } from '@/shared/theme/theme'
 
 type WorkoutMusicContextValue = {
   mood: WorkoutMoodId
@@ -49,6 +50,7 @@ export function WorkoutMusicProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     preloadWorkoutMusic(mood)
+    setMoodFromTrack(mood)
   }, [mood])
 
   useEffect(() => {

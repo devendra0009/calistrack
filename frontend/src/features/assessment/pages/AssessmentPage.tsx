@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
 import { Check, Circle, Flag, Play, Upload, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import { ApiError } from '@/shared/api/errors'
 import type {
   GoalPathAssessmentResponse,

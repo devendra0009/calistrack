@@ -38,9 +38,19 @@ export function WorkoutMusicControl({ className }: { className?: string }) {
     <div ref={rootRef} className={cn('relative shrink-0', className)}>
       <div
         className={cn(
-          'inline-flex h-9 items-center overflow-hidden rounded-lg border border-stone-300 bg-stone-50 text-stone-700',
-          accent && 'border-emerald-300 bg-emerald-50 text-emerald-900',
+          'inline-flex h-9 items-center overflow-hidden rounded-lg border border-stone-300 bg-stone-50 text-stone-700 transition-[border-color,box-shadow,background-color] duration-200',
+          accent && 'text-stone-800',
         )}
+        style={
+          accent
+            ? {
+                borderColor: 'color-mix(in srgb, var(--accent) 45%, var(--color-stone-300, #d6d3d1))',
+                background:
+                  'linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--color-stone-50, #fafaf9)), var(--color-stone-50, #fafaf9))',
+                boxShadow: '0 0 0 1px var(--highlight), 0 0 14px var(--accent-glow)',
+              }
+            : undefined
+        }
       >
         <button
           type="button"
@@ -92,14 +102,20 @@ export function WorkoutMusicControl({ className }: { className?: string }) {
                   type="button"
                   onClick={() => {
                     setMood(m.id)
+                    setOpen(false)
                   }}
                   className={cn(
-                    'rounded-lg px-2 py-1.5 text-xs font-semibold transition',
+                    'flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold transition',
                     selected
-                      ? 'bg-emerald-100 text-emerald-900'
+                      ? 'bg-stone-100 text-stone-900'
                       : 'text-stone-700 hover:bg-stone-100',
                   )}
                 >
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: `var(--mood-dot-${m.id}, var(--accent))` }}
+                    aria-hidden
+                  />
                   {m.label}
                 </button>
               )

@@ -1,0 +1,15 @@
+# Prometheus scrape config for local CaliTrack backend.
+# host.docker.internal = host machine from inside Docker Desktop (Windows/Mac).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "calistrack-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8084"]
+        labels:
+          application: calistrack-backend
+          environment: local

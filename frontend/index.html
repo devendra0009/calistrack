@@ -12,11 +12,35 @@
           t === 'dark' ||
           (t !== 'light' &&
             window.matchMedia('(prefers-color-scheme: dark)').matches)
+        var theme = dark ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', theme)
         if (dark) document.documentElement.classList.add('dark')
+        var m =
+          localStorage.getItem('calistrack.workoutMusic.mood') ||
+          localStorage.getItem('calistrack.mood')
+        if (m === 'energy') m = 'groove'
+        if (m === 'night') m = 'energetic'
+        if (
+          m === 'chill' ||
+          m === 'focus' ||
+          m === 'groove' ||
+          m === 'energetic'
+        ) {
+          document.documentElement.dataset.moodPending = m
+        }
       } catch (e) {}
     </script>
   </head>
   <body>
+    <script>
+      try {
+        var pending = document.documentElement.dataset.moodPending
+        if (pending) {
+          document.body.setAttribute('data-mood', pending)
+          delete document.documentElement.dataset.moodPending
+        }
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,9 +1,10 @@
 import { Link, useNavigate, useParams } from "react-router";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from '@/shared/ui/notify'
 import { ApiError } from "@/shared/api/errors";
 import type { SessionExerciseLineDto } from "@/shared/api/types";
 import { Button } from "@/shared/ui/Button";
+import { PageError } from "@/shared/ui/PageError";
 import { PageShell } from "@/shared/ui/PageShell";
 import { Spinner } from "@/shared/ui/Spinner";
 import { parseStretchGuide } from "@/features/stretching/lib/stretchGuide";
@@ -223,17 +224,22 @@ export function WorkoutSessionPage() {
   if (detail.isError || !detail.data) {
     return (
       <PageShell embedded title="Session">
-        <p className="text-red-600">
-          {detail.error instanceof ApiError
-            ? detail.error.message
-            : "Could not load session."}
-        </p>
-        <Link
-          to="/home"
-          className="mt-4 inline-block text-sm font-medium text-emerald-900"
+        <PageError
+          title="Session didn’t load"
+          message={
+            detail.error instanceof ApiError
+              ? detail.error.message
+              : "Could not load session."
+          }
+          onRetry={() => void detail.refetch()}
         >
-          Back to home
-        </Link>
+          <Link
+            to="/home"
+            className="mt-3 inline-block text-sm font-medium text-emerald-900 hover:underline"
+          >
+            Back to home
+          </Link>
+        </PageError>
       </PageShell>
     );
   }

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { startTransition, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import { ApiError } from '@/shared/api/errors'
 import type { CatalogGoal } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'

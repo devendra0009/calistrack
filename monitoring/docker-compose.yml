@@ -1,0 +1,44 @@
+# Local observability stack: Prometheus scrapes Actuator, Grafana visualizes.
+#
+# Prerequisites: backend running on host port 8084
+# Start:  docker compose -f monitoring/docker-compose.yml up -d
+# Stop:   docker compose -f monitoring/docker-compose.yml down
+#
+# URLs:
+#   Prometheus  http://localhost:9090
+#   Grafana     http://localhost:3000  (admin / admin)
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: calistrack-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro # read only, puts yml file from prometheus dir to /etc/prometheus dir and read from there 
+      - prometheus-data:/prometheus # all the data like metrics, logs, etc goes to /prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml" #tell prometheus to read the config file from /etc/prometheus/prometheus.yml
+      - "--storage.tsdb.path=/prometheus" #tell prometheus to store the data in /prometheus as /prometheus is mounted to prometheus-data volume
+      - "--web.enable-lifecycle" # enable the lifecycle API to reload the config file without restarting the container
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: calistrack-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+  grafana-data:

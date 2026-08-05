@@ -6,36 +6,39 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  applyThemeClass,
-  resolveInitialTheme,
-  writeStoredTheme,
-  type ThemePreference,
-} from '@/shared/lib/theme-storage'
+  getTheme,
+  initTheme,
+  onThemeChange,
+  setTheme as applyTheme,
+  toggleTheme as flipTheme,
+  type ThemeId,
+} from '@/shared/theme/theme'
 
 type ThemeContextValue = {
-  theme: ThemePreference
-  setTheme: (theme: ThemePreference) => void
+  theme: ThemeId
+  setTheme: (theme: ThemeId) => void
   toggleTheme: () => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemePreference>(() =>
-    typeof document !== 'undefined' ? resolveInitialTheme() : 'light',
+  const [theme, setThemeState] = useState<ThemeId>(() =>
+    typeof document !== 'undefined' ? getTheme() : 'light',
   )
 
   useEffect(() => {
-    applyThemeClass(theme)
-    writeStoredTheme(theme)
-  }, [theme])
+    initTheme()
+    setThemeState(getTheme())
+    return onThemeChange(({ theme: next }) => setThemeState(next))
+  }, [])
 
-  const setTheme = (next: ThemePreference) => {
-    setThemeState(next)
+  const setTheme = (next: ThemeId) => {
+    applyTheme(next)
   }
 
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'))
+    flipTheme()
   }
 
   return (

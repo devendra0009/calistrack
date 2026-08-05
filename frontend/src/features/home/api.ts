@@ -7,6 +7,7 @@ import type {
 } from '@/shared/api/types'
 import { useAuthSession } from '@/features/auth/AuthSessionProvider'
 import { ApiError } from '@/shared/api/errors'
+import { activityQueryKeyRoot } from '@/features/home/activityApi'
 
 export const currentSessionQueryKey = ['workout-sessions', 'current'] as const
 export const workoutSessionsQueryKey = ['workout-sessions', 'list'] as const
@@ -96,6 +97,7 @@ export function useSessionTrainMutations(sessionId: string) {
       qc.invalidateQueries({ queryKey: currentSessionQueryKey }),
       qc.invalidateQueries({ queryKey: workoutSessionsQueryKey }),
       qc.invalidateQueries({ queryKey: ['stretching', 'today'] }),
+      qc.invalidateQueries({ queryKey: activityQueryKeyRoot }),
     ])
   }
 

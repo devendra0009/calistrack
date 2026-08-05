@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { MessageCircle, SendHorizontal, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import { useChatMutation } from '@/features/chat/api'
 import { ApiError } from '@/shared/api/errors'
 import { cn } from '@/shared/lib/cn'

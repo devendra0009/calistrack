@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import {
   useAddWorkoutExercise,
   useAdminExercises,

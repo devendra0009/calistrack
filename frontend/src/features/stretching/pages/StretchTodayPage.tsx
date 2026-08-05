@@ -1,12 +1,13 @@
 import { Link, useNavigate } from 'react-router'
 import { startTransition, useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notify'
 import { ApiError } from '@/shared/api/errors'
 import type {
   StretchingTodayResponse,
   WorkoutSessionDetailResponse,
 } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'
+import { PageError } from '@/shared/ui/PageError'
 import { PageShell } from '@/shared/ui/PageShell'
 import { Spinner } from '@/shared/ui/Spinner'
 import { cn } from '@/shared/lib/cn'
@@ -117,8 +118,8 @@ function StretchGuideBlock({
 
       {guide.steps.length > 0 ? (
         stepsCollapsed ? (
-          <details className="group rounded-xl border border-sky-100 bg-white/70 open:bg-sky-50/40">
-            <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-sky-900 marker:content-none [&::-webkit-details-marker]:hidden">
+          <details className="group rounded-xl border border-sky-100  open:bg-sky-50/40">
+            <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-orange-200 marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-2">
                 Read form tips
                 <span className="text-xs font-normal text-sky-700/70 group-open:hidden">
@@ -438,11 +439,15 @@ function StretchSessionPanel({ sessionId }: { sessionId: string }) {
 
   if (detail.isError || !detail.data) {
     return (
-      <p className="text-sm text-red-600">
-        {detail.error instanceof ApiError
-          ? detail.error.message
-          : 'Could not load stretch session.'}
-      </p>
+      <PageError
+        title="Stretch session stalled"
+        message={
+          detail.error instanceof ApiError
+            ? detail.error.message
+            : 'Could not load stretch session.'
+        }
+        onRetry={() => void detail.refetch()}
+      />
     )
   }
 
@@ -469,17 +474,22 @@ export function StretchTodayPage() {
   if (todayQuery.isError || !todayQuery.data) {
     return (
       <PageShell embedded title="Morning Stretch">
-        <p className="text-sm text-red-600">
-          {todayQuery.error instanceof ApiError
-            ? todayQuery.error.message
-            : 'Could not load stretching routine.'}
-        </p>
-        <Link
-          to="/home"
-          className="mt-4 inline-block text-sm font-medium text-sky-800"
+        <PageError
+          title="Routine didn’t load"
+          message={
+            todayQuery.error instanceof ApiError
+              ? todayQuery.error.message
+              : 'Could not load stretching routine.'
+          }
+          onRetry={() => void todayQuery.refetch()}
         >
-          Back to home
-        </Link>
+          <Link
+            to="/home"
+            className="mt-3 inline-block text-sm font-medium text-sky-800 hover:underline"
+          >
+            Back to home
+          </Link>
+        </PageError>
       </PageShell>
     )
   }

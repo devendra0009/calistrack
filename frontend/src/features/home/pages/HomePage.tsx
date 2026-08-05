@@ -6,6 +6,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { cn } from '@/shared/lib/cn'
 import { useMe } from '@/features/profile/api'
 import { useWorkoutSessions } from '@/features/home/api'
+import { ActivityCalendar } from '@/features/home/components/ActivityCalendar'
 import { useStretchingToday } from '@/features/stretching/api'
 import { usePrefetchAssessmentPath } from '@/features/assessment/api'
 import { useWorkoutMusic } from '@/features/workout-music/WorkoutMusicProvider'
@@ -206,6 +207,8 @@ export function HomePage() {
     >
       <div className="space-y-5">
         <MorningStretchCard />
+
+        <ActivityCalendar dayCount={7} />
 
         <section className="rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
